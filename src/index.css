@@ -62,3 +62,113 @@ body {
   color: var(--text-muted);
   font-size: 0.875rem;
 }
+
+/* 共通レイアウト */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0.5rem 1rem 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+button,
+select {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+}
+
+.tabs a {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs a[aria-current='page'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.app-main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.card {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ログイン画面・通知 */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+button.primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+}
+
+.warnings ul {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 0;
+}

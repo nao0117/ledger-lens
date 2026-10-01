@@ -30,13 +30,16 @@ export type WarningCode =
   | 'duplicate-master-row'
   | 'incomplete-master-row'
   | 'unknown-asset-class'
-  | 'unknown-region';
+  | 'unknown-region'
+  | 'missing-master';
 
 export type ParseWarning = {
   code: WarningCode;
   /** 画面に出す日本語の説明。金額は含めない（マスク時にも出せるように）。 */
   message: string;
   date?: string;
+  /** total-mismatch のとき、シートの集計値 − 明細からの計算値（円）。金額なので画面ではマスクの対象にする。 */
+  difference?: number;
 };
 
 export class ParseError extends Error {

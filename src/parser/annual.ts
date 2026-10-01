@@ -193,6 +193,7 @@ function checkTotals(
           code: 'total-mismatch',
           message: `${date} の${TOTAL_NAMES[kind]}が、明細から計算した値とシートの集計値でずれています`,
           date,
+          difference: sheetValue - sums[kind],
         });
       }
     }
