@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest';
+import { buildHoldingRows } from '../../domain/index.ts';
+import { makeData } from '../../domain/fixtures/sampleData.ts';
+import {
+  changeKind, DEFAULT_SORT, EMPTY_FILTERS, filterOptions, filterRows, formatPercent, isNewHolding, nextSort, sortRows,
+} from './holdingsView.ts';
+
+const rows = buildHoldingRows(makeData());
+const byName = (r: { name: string; broker: string }[]) => r.map((x) => `${x.broker}/${x.name}`);
+
+describe('sortRows', () => {
+  it('評価額の降順（負値は末尾）', () => {
+    const v = sortRows(rows, DEFAULT_SORT).map((r) => r.value);
+    expect(v).toEqual([...v].sort((a, b) => b - a));
+    expect(v[v.length - 1]).toBe(30);
+  });
+  it('昇順にでき、元の配列は変更しない', () => {
+    const before = rows.map((r) => r.id);
+    const v = sortRows(rows, { key: 'value', dir: 'asc' }).map((r) => r.value);
+    expect(v).toEqual([...v].sort((a, b) => a - b));
+    expect(rows.map((r) => r.id)).toEqual(before);
+  });
+  it('% が null の行は昇順でも降順でも末尾', () => {
+    // 2023-12-31 基準: 米国株C は前回 330 → 0 で -100%、信用は前回 20 → -10
+    const r = buildHoldingRows(makeData(), '2023-01-31');
+    const withNull = r.filter((x) => x.change?.percent === null);
+    expect(withNull.length).toBeGreaterThan(0);
+    for (const dir of ['asc', 'desc'] as const) {
+      const s = sortRows(r, { key: 'changePercent', dir });
+      expect(s.slice(-withNull.length).every((x) => x.change?.percent === null)).toBe(true);
+    }
+  });
+  it('文字列は日本語ロケールで並べ、同名は id 順で安定', () => {
+    const s = sortRows(rows, { key: 'name', dir: 'asc' });
+    expect(byName(s).filter((x) => x.endsWith('サンプル投信A'))).toEqual(['証券会社A/サンプル投信A', '証券会社B/サンプル投信A']);
+  });
+  it('空配列', () => {
+    expect(sortRows([], DEFAULT_SORT)).toEqual([]);
+  });
+});
+
+describe('nextSort', () => {
+  it('同じキーで方向反転、別キーで初期方向', () => {
+    expect(nextSort({ key: 'value', dir: 'desc' }, 'value')).toEqual({ key: 'value', dir: 'asc' });
+    expect(nextSort({ key: 'value', dir: 'asc' }, 'name')).toEqual({ key: 'name', dir: 'asc' });
+    expect(nextSort({ key: 'name', dir: 'asc' }, 'ratio')).toEqual({ key: 'ratio', dir: 'desc' });
+  });
+});
+
+describe('filterRows', () => {
+  it('条件なしは全件', () => {
+    expect(filterRows(rows, EMPTY_FILTERS)).toHaveLength(rows.length);
+  });
+  it('証券会社・口座区分・資産クラス', () => {
+    expect(filterRows(rows, { ...EMPTY_FILTERS, broker: '証券会社B' })).toHaveLength(1);
+    expect(filterRows(rows, { ...EMPTY_FILTERS, account: 'NISA口座' })).toHaveLength(2);
+    expect(filterRows(rows, { ...EMPTY_FILTERS, assetClass: '米国株' })).toHaveLength(1);
+  });
+  it('銘柄名の検索は部分一致で前後空白を無視', () => {
+    expect(filterRows(rows, { ...EMPTY_FILTERS, query: '  投信a ' })).toHaveLength(2);
+    expect(filterRows(rows, { ...EMPTY_FILTERS, query: 'ありません' })).toEqual([]);
+  });
+  it('未分類のみ、および AND 条件', () => {
+    const u = filterRows(rows, { ...EMPTY_FILTERS, unclassifiedOnly: true });
+    expect(u.map((r) => r.name)).toEqual(['サンプル信用D']);
+    expect(filterRows(rows, { ...EMPTY_FILTERS, unclassifiedOnly: true, broker: '証券会社B' })).toEqual([]);
+  });
+});
+
+describe('filterOptions', () => {
+  it('重複なしの選択肢', () => {
+    const o = filterOptions(rows);
+    expect(o.brokers).toHaveLength(3);
+    expect(o.accounts).toContain('NISA口座');
+    expect(new Set(o.assetClasses).size).toBe(o.assetClasses.length);
+    expect(filterOptions([])).toEqual({ brokers: [], accounts: [], assetClasses: [] });
+  });
+});
+
+describe('表示判定', () => {
+  it('changeKind / isNewHolding', () => {
+    const r = buildHoldingRows(makeData(), '2023-01-31');
+    const b = r.find((x) => x.broker === '証券会社B')!; // 0 → 40 の新規
+    expect(isNewHolding(b)).toBe(true);
+    expect(changeKind(b)).toBe('up');
+    const first = buildHoldingRows(makeData(), '2022-01-31')[0]!;
+    expect(changeKind(first)).toBe('none');
+    expect(isNewHolding(first)).toBe(false);
+  });
+  it('formatPercent', () => {
+    expect(formatPercent(0.1234)).toBe('12.3%');
+    expect(formatPercent(0.1234, true)).toBe('+12.3%');
+    expect(formatPercent(-0.05, true)).toBe('-5.0%');
+    expect(formatPercent(0, true)).toBe('0.0%');
+  });
+});

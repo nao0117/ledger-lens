@@ -1,0 +1,257 @@
+.holdings {
+  --h-up: #1a7f37;
+  --h-down: #c62828;
+  --h-warn-bg: #fff4d6;
+  --h-warn-border: #c27c00;
+  --h-warn-text: #6b4500;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .holdings {
+    --h-up: #5fd08a;
+    --h-down: #ff8a80;
+    --h-warn-bg: #3a2c0a;
+    --h-warn-border: #e0a030;
+    --h-warn-text: #ffd98a;
+  }
+}
+
+:root[data-theme='dark'] .holdings {
+  --h-up: #5fd08a;
+  --h-down: #ff8a80;
+  --h-warn-bg: #3a2c0a;
+  --h-warn-border: #e0a030;
+  --h-warn-text: #ffd98a;
+}
+
+.h-alert {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--h-warn-bg);
+  color: var(--h-warn-text);
+  border: 1px solid var(--h-warn-border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+/* 絞り込み */
+.h-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 0.75rem;
+}
+
+.h-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  min-width: 0;
+}
+
+.h-field-wide {
+  grid-column: 1 / -1;
+}
+
+.h-field select,
+.h-field input {
+  min-height: 2.5rem;
+  padding: 0 0.5rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.h-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  font-size: 0.9375rem;
+}
+
+.h-reset,
+.h-sort {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.h-reset {
+  min-height: 2.5rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.h-sort-mobile {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* 表 */
+.h-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.h-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.h-table th,
+.h-table td {
+  padding: 0.5rem 0.625rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.h-table thead th {
+  padding: 0;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.h-table .h-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.h-table thead .h-num .h-sort {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.h-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.625rem;
+  background: none;
+  border: 0;
+  text-align: inherit;
+}
+
+.h-sort:hover,
+.h-sort:focus-visible {
+  color: var(--accent);
+}
+
+.h-sort-mark {
+  display: inline-block;
+  min-width: 1em;
+  font-size: 0.7em;
+}
+
+.h-table th[aria-sort='ascending'],
+.h-table th[aria-sort='descending'] {
+  color: var(--text);
+}
+
+.h-name {
+  font-weight: 600;
+}
+
+.h-name > span:first-child {
+  margin-right: 0.5rem;
+}
+
+.h-badge {
+  display: inline-block;
+  padding: 0.0625rem 0.5rem;
+  background: var(--h-warn-bg);
+  color: var(--h-warn-text);
+  border: 1px solid var(--h-warn-border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.h-row-unclassified {
+  box-shadow: inset 4px 0 0 var(--h-warn-border);
+}
+
+.h-up { color: var(--h-up); }
+.h-down { color: var(--h-down); }
+.h-flat,
+.h-muted { color: var(--text-muted); }
+
+/* スマホ: 行をカードにする */
+@media (max-width: 47.9375rem) {
+  .h-sort-mobile {
+    display: grid;
+  }
+
+  .h-table-wrap {
+    background: none;
+    border: 0;
+  }
+
+  .h-table,
+  .h-table tbody,
+  .h-table tr,
+  .h-table th,
+  .h-table td {
+    display: block;
+  }
+
+  .h-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .h-table tr {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .h-table th,
+  .h-table td {
+    padding: 0.25rem 0;
+    border: 0;
+  }
+
+  .h-table tbody th.h-name {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+
+  .h-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .h-table td::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .h-table .h-num {
+    text-align: right;
+  }
+}
