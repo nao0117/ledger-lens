@@ -1,0 +1,28 @@
+# 依存・ビルド成果物
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# 実データの混入防止（docs/requirements.md 7.2）
+*.xlsx
+*.xls
+*.csv
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!src/**/fixtures/*.json
+data/
+private/
+
+# 環境変数（OAuth クライアント ID、API キー）
+.env*
+!.env.example
+
+# エディタ・OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.log

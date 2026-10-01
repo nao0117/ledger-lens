@@ -1,0 +1,64 @@
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --text: #1c1c1e;
+  --text-muted: #5f6368;
+  --border: #e0e0e3;
+  --accent: #2f6fde;
+
+  color-scheme: light;
+  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #121214;
+    --surface: #1c1c1f;
+    --text: #ececef;
+    --text-muted: #a0a0a8;
+    --border: #2e2e33;
+    --accent: #7aa7ff;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #121214;
+  --surface: #1c1c1f;
+  --text: #ececef;
+  --text-muted: #a0a0a8;
+  --border: #2e2e33;
+  --accent: #7aa7ff;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.landing {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
+.landing h1 {
+  margin: 0 0 1rem;
+  font-size: 1.75rem;
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
