@@ -1,19 +1,17 @@
 import type { HoldingRow } from '../../domain/index.ts';
+import { assetClassColor } from '../colors.ts';
 import { useMoney } from '../Money.tsx';
-import { changeKind, formatPercent, isNewHolding, type Sort, type SortKey } from './holdingsView.ts';
+import { changeKind, formatPercent, isNewHolding, SORT_LABELS, type Sort, type SortKey } from './holdingsView.ts';
 
 type Column = { key: SortKey; label: string; numeric?: boolean };
 
-export const COLUMNS: Column[] = [
-  { key: 'name', label: '銘柄名' },
-  { key: 'broker', label: '証券会社' },
-  { key: 'account', label: '口座区分' },
-  { key: 'assetClass', label: '資産クラス' },
-  { key: 'value', label: '評価額', numeric: true },
-  { key: 'ratio', label: '構成比', numeric: true },
-  { key: 'changeAmount', label: '前回比（金額）', numeric: true },
-  { key: 'changePercent', label: '前回比（%）', numeric: true },
-];
+const NUMERIC_KEYS: ReadonlySet<SortKey> = new Set(['value', 'ratio', 'changeAmount', 'changePercent']);
+
+export const COLUMNS: Column[] = (Object.keys(SORT_LABELS) as SortKey[]).map((key) => ({
+  key,
+  label: SORT_LABELS[key],
+  numeric: NUMERIC_KEYS.has(key),
+}));
 
 const ARROW = { up: '▲', down: '▼', flat: '±', none: '' } as const;
 
@@ -45,17 +43,19 @@ function ChangePercent({ row }: { row: HoldingRow }) {
   return (
     <span className={`h-change h-${kind}`}>
       <span aria-hidden="true">{ARROW[kind]} </span>
-      {formatPercent(row.change.percent, true)}
+      {formatPercent(row.change.percent / 100, true)}
     </span>
   );
 }
 
+/** PC 用の表。見出しのクリックで並べ替える。assetClasses は資産クラス色の割り当て順。 */
 export function HoldingsTable({
-  rows, sort, onSort,
+  rows, sort, onSort, assetClasses,
 }: {
   rows: HoldingRow[];
   sort: Sort;
   onSort: (key: SortKey) => void;
+  assetClasses: string[];
 }) {
   const { yen } = useMoney();
   return (
@@ -77,17 +77,20 @@ export function HoldingsTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.id} className={r.unclassified ? 'h-row-unclassified' : undefined}>
-            <th scope="row" className="h-name" data-label="銘柄名">
+            <th scope="row" className="h-name">
               <span>{r.name}</span>
               {r.unclassified && <span className="h-badge">未分類</span>}
             </th>
-            <td data-label="証券会社">{r.broker}</td>
-            <td data-label="口座区分">{r.account}</td>
-            <td data-label="資産クラス">{r.assetClass}</td>
-            <td data-label="評価額" className={`h-num${r.value < 0 ? ' h-down' : ''}`}>{yen(r.value)}</td>
-            <td data-label="構成比" className="h-num">{formatPercent(r.ratio)}</td>
-            <td data-label="前回比（金額）" className="h-num"><ChangeAmount row={r} /></td>
-            <td data-label="前回比（%）" className="h-num"><ChangePercent row={r} /></td>
+            <td>{r.broker}</td>
+            <td>{r.account}</td>
+            <td>
+              <span className="h-swatch" style={{ background: assetClassColor(r.assetClass, assetClasses.indexOf(r.assetClass)) }} aria-hidden="true" />
+              {r.assetClass}
+            </td>
+            <td className={`h-num${r.value < 0 ? ' h-down' : ''}`}>{yen(r.value)}</td>
+            <td className="h-num">{formatPercent(r.ratio)}</td>
+            <td className="h-num"><ChangeAmount row={r} /></td>
+            <td className="h-num"><ChangePercent row={r} /></td>
           </tr>
         ))}
       </tbody>

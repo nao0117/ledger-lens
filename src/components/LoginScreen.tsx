@@ -1,16 +1,26 @@
+import { LockIcon } from './icons.tsx';
+
 type Props = {
   busy: boolean;
   error: string | null;
+  /** 自動ロック・手動ロックの後に出す案内。 */
+  lockNotice?: string | null;
   configured: boolean;
   onLogin: () => void;
   onDemo?: () => void;
 };
 
-export function LoginScreen({ busy, error, configured, onLogin, onDemo }: Props) {
+export function LoginScreen({ busy, error, lockNotice = null, configured, onLogin, onDemo }: Props) {
   return (
     <main className="landing">
       <h1>Ledger Lens</h1>
       <p>Google スプレッドシートの資産データを、グラフで確認するための個人用ダッシュボードです。</p>
+      {lockNotice && (
+        <div role="status" className="notice lock-notice">
+          <LockIcon size={20} />
+          <p>{lockNotice}</p>
+        </div>
+      )}
       <p className="note">データはブラウザのメモリ上でだけ扱い、端末や外部サーバーには保存しません。</p>
       {!configured && (
         <p role="alert" className="notice">

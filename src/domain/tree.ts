@@ -5,6 +5,10 @@ export type TreeNode = {
   name: string;
   /** 子がある場合は子の合計 */
   value: number;
+  /** 銘柄（葉）だけ: 銘柄ID */
+  id?: string;
+  /** 銘柄（葉）だけ: 資産クラス */
+  assetClass?: string;
   children?: TreeNode[];
 };
 
@@ -38,7 +42,7 @@ export function buildTree(data: Pick<ParsedAnnual, 'holdings' | 'snapshots'>, ba
     brokers.set(h.broker, accounts);
     const leaves = accounts.get(h.account) ?? [];
     accounts.set(h.account, leaves);
-    leaves.push({ name: h.name, value: v });
+    leaves.push({ name: h.name, value: v, id: h.id, assetClass: h.assetClass });
   }
   const sum = (ns: TreeNode[]) => ns.reduce((a, n) => a + n.value, 0);
   const bySize = (a: TreeNode, b: TreeNode) => b.value - a.value || a.name.localeCompare(b.name);
