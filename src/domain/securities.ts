@@ -44,7 +44,12 @@ export type SecurityRow = {
   unclassified: boolean;
   /** まとめた行どうしで資産クラスか地域が食い違う */
   classConflict: boolean;
+  /** 基準日にいずれかの口座で保有している（セルが空欄でない行がある） */
+  held: boolean;
 };
+
+/** 基準日に保有している、または前回から評価額が変わった行。 */
+const isPresent = (r: HoldingRow) => r.held || (r.change !== null && r.change.amount !== 0);
 
 const byValue = (a: HoldingRow, b: HoldingRow) => b.value - a.value || a.id.localeCompare(b.id);
 const sum = (xs: readonly number[]) => xs.reduce((s, x) => s + x, 0);
@@ -63,15 +68,19 @@ export function groupBySecurity(rows: readonly HoldingRow[]): SecurityRow[] {
     else groups.set(key, [r]);
   }
   const out = [...groups].map(([key, all]): SecurityRow => {
-    const members = all.filter((r) => !isMargin(r)).sort(byValue);
-    const marginMembers = all.filter(isMargin).sort(byValue);
+    // 基準日に保有しておらず前回からの変化もない行（昔の行など）は、口座として数えない。
+    // すべてがそうなら（保有なしの銘柄）、名前と分類を取るために全行を使う。
+    const present = all.filter(isPresent);
+    const rows = present.length > 0 ? present : all;
+    const members = rows.filter((r) => !isMargin(r)).sort(byValue);
+    const marginMembers = rows.filter(isMargin).sort(byValue);
     const marginOnly = members.length === 0;
     const basis = marginOnly ? marginMembers : members;
     const value = sum(basis.map((r) => r.value));
     const previousValue = sumNullable(basis.map((r) => r.previousValue));
     const lead = basis[0]!;
-    const classes = new Set(all.map((r) => r.assetClass));
-    const regions = new Set(all.map((r) => r.region));
+    const classes = new Set(rows.map((r) => r.assetClass));
+    const regions = new Set(rows.map((r) => r.region));
     return {
       key,
       name: lead.securityName ?? lead.name,
@@ -84,10 +93,11 @@ export function groupBySecurity(rows: readonly HoldingRow[]): SecurityRow[] {
       marginValue: marginMembers.length === 0 ? null : sum(marginMembers.map((r) => r.value)),
       previousValue,
       change: computeChange(value, previousValue),
-      totalChange: sumNullable(all.map((r) => (r.change ? r.change.amount : null))),
+      totalChange: sumNullable(rows.map((r) => (r.change ? r.change.amount : null))),
       ratio: sum(basis.map((r) => r.ratio)),
       unclassified: all.some((r) => r.unclassified),
       classConflict: classes.size > 1 || regions.size > 1,
+      held: present.some((r) => r.held),
     };
   });
   return out.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'ja'));

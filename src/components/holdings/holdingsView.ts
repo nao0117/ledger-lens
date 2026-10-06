@@ -1,4 +1,4 @@
-import type { HoldingRow, SecurityRow } from '../../domain/index.ts';
+import { groupBySecurity, type HoldingRow, type SecurityRow } from '../../domain/index.ts';
 
 export type SortKey = 'name' | 'broker' | 'account' | 'assetClass' | 'value' | 'ratio' | 'changeAmount' | 'changePercent';
 export type SortDir = 'asc' | 'desc';
@@ -273,4 +273,20 @@ export function profitDisplay(value: number, yen: (v: number) => string, mask: b
   const kind: ChangeKind = value > 0 ? 'up' : value < 0 ? 'down' : 'flat';
   const text = mask ? yen(value) : `${value > 0 ? '+' : ''}${yen(value)}`;
   return { kind, symbol: SYMBOL[kind], text };
+}
+
+/**
+ * 基準日に保有していない行（シートの空欄）を除く。評価額 0 と入力された行は残す。
+ * showNotHeld が true なら何も除かない。
+ */
+export function heldRows(rows: readonly HoldingRow[], showNotHeld: boolean): HoldingRow[] {
+  return showNotHeld ? [...rows] : rows.filter((r) => r.held);
+}
+
+/**
+ * 口座ごとの行を銘柄ごとにまとめ、保有なしの銘柄を除く。
+ * 売った口座の前回の値も前回比に含めるため、保有なしの行を除くのは、まとめる前ではなくまとめた後に銘柄単位で行う。
+ */
+export function heldSecurities(rows: readonly HoldingRow[], showNotHeld: boolean): SecurityRow[] {
+  return groupBySecurity(rows).filter((s) => showNotHeld || s.held);
 }

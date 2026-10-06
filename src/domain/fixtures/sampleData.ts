@@ -28,3 +28,26 @@ export function makeData(values: Record<string, number[]> = VALUES, holdings: Ho
   );
   return { holdings, snapshots, dates, sheetTotals: {}, warnings: [] };
 }
+
+/**
+ * 開発用デモのデータ。makeData() に、保有なし（売却済みでセルが空欄）の銘柄と、
+ * 評価額 0 と入力された信用（損益が 0）を加えたもの。既存のテストは makeData() を使う。
+ */
+export function makeDemoData(): ParsedAnnual {
+  const base = makeData();
+  const sold = h('証券会社B', '特定口座', 'サンプル売却済E', '国内株');
+  const neverHeld = h('証券会社B', 'NISA口座', 'サンプル未保有G', '国内株');
+  const zeroMargin = h('証券会社A', '信用', 'サンプル信用F', '国内株');
+  const added: [Holding, Record<string, number | null>][] = [
+    [sold, { '2022-01-31': 80, '2023-01-31': 90, '2023-12-31': 70, '2024-01-31': null }],
+    [neverHeld, { '2022-01-31': null, '2023-01-31': null, '2023-12-31': null, '2024-01-31': null }],
+    [zeroMargin, { '2022-01-31': -20, '2023-01-31': 5, '2023-12-31': 8, '2024-01-31': 0 }],
+  ];
+  const snapshots: Snapshot[] = added.flatMap(([hd, byDate]) =>
+    base.dates.map((date): Snapshot => {
+      const v = byDate[date] ?? null;
+      return v === null ? { date, holdingId: hd.id, value: 0, blank: true } : { date, holdingId: hd.id, value: v };
+    }),
+  );
+  return { ...base, holdings: [...base.holdings, ...added.map(([hd]) => hd)], snapshots: [...base.snapshots, ...snapshots] };
+}

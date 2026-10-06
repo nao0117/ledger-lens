@@ -23,7 +23,7 @@ export default function Dashboard() {
   );
   const rows = useMemo(() => (baseDate === null ? [] : buildHoldingRows(data, baseDate)), [data, baseDate]);
   const movers = useMemo(() => topMovers(rows, MOVERS_COUNT), [rows]);
-  const unclassifiedCount = useMemo(() => rows.filter((r) => r.unclassified).length, [rows]);
+  const unclassifiedCount = useMemo(() => rows.filter((r) => r.unclassified && r.held).length, [rows]);
 
   if (summary === null || baseDate === null) {
     return (

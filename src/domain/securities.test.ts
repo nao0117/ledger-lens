@@ -156,3 +156,70 @@ describe('名寄せの候補', () => {
     ]);
   });
 });
+
+describe('保有していない銘柄（シートの空欄）', () => {
+  const hs: Holding[] = [
+    h('証券会社A', 'NISA成長投資枠', 'サンプル投信P', '投資信託', '全世界'),
+    h('証券会社B', '特定口座', 'サンプル投信P', '投資信託', '全世界'),
+    h('証券会社A', '特定口座', 'サンプル株Q', '国内株', '日本'),
+    h('証券会社A', '特定口座', 'サンプル株R', '国内株', '日本'),
+    h('証券会社A', '信用', 'サンプル株S', '国内株', '日本'),
+    h('証券会社A', '特定口座', 'サンプル株T', '国内株', '日本'),
+  ];
+  // 8月末 → 9月末（blank: 9月末が空欄）
+  const before = [100, 50, 80, 0, 0, 0];
+  const after = [90, 0, 0, 0, 0, 30];
+  const blankAfter = new Set([1, 2, 3]);
+  const d: ParsedAnnual = {
+    holdings: hs,
+    dates: ['2026-08-31', '2026-09-30'],
+    snapshots: [
+      ...hs.map((x, i) => ({ date: '2026-08-31', holdingId: x.id, value: before[i]!, ...(i === 3 || i === 4 ? { blank: true as const } : {}) })),
+      ...hs.map((x, i) => ({ date: '2026-09-30', holdingId: x.id, value: after[i]!, ...(blankAfter.has(i) || i === 4 ? { blank: true as const } : {}) })),
+    ],
+    sheetTotals: {},
+    warnings: [],
+  };
+  const rows = buildHoldingRows(d, '2026-09-30');
+  const find = (name: string) => groupBySecurity(rows).find((s) => s.name === name)!;
+
+  it('空欄の行は held=false、0 や値のある行は held=true', () => {
+    const heldOf = (id: string) => rows.find((r) => r.id === id)!.held;
+    expect(hs.map((x) => heldOf(x.id))).toEqual([true, false, false, false, false, true]);
+  });
+
+  it('一部の口座だけ空欄（売却）なら、銘柄は保有中。売った口座は変化があるので口座に数え、前回比も合う', () => {
+    const s = find('サンプル投信P');
+    expect(s.held).toBe(true);
+    expect(s.members).toHaveLength(2);
+    expect(s.value).toBe(90);
+    expect(s.change).toEqual({ amount: -60, percent: (-60 / 150) * 100 });
+  });
+
+  it('すべての口座が空欄になった銘柄は保有なし（前回までは保有していた）', () => {
+    const s = find('サンプル株Q');
+    expect(s.held).toBe(false);
+    expect(s.value).toBe(0);
+    expect(s.change?.amount).toBe(-80);
+  });
+
+  it('昔から空欄のままの行は、保有なしで、口座としても数えない（信用も同じ）', () => {
+    expect(find('サンプル株R').held).toBe(false);
+    expect(find('サンプル株R').members).toHaveLength(1); // 全行が該当するときだけ、名前と分類のために残る
+    expect(find('サンプル株S').held).toBe(false);
+  });
+
+  it('信用の評価額（損益）が 0 と入力されていれば保有している', () => {
+    const zeroMargin: ParsedAnnual = {
+      ...d,
+      snapshots: d.snapshots.map((s) => (s.holdingId === hs[4]!.id && s.date === '2026-09-30' ? { date: s.date, holdingId: s.holdingId, value: 0 } : s)),
+    };
+    const s = groupBySecurity(buildHoldingRows(zeroMargin, '2026-09-30')).find((x) => x.name === 'サンプル株S')!;
+    expect(s.held).toBe(true);
+    expect(s.value).toBe(0);
+  });
+
+  it('新規（前回は空欄、今回は値あり）は保有している', () => {
+    expect(find('サンプル株T')).toMatchObject({ held: true, value: 30 });
+  });
+});

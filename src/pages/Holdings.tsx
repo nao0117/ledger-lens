@@ -11,7 +11,7 @@ import { SecurityList } from '../components/holdings/SecurityList.tsx';
 import { SecurityTable } from '../components/holdings/SecurityTable.tsx';
 import { GroupingToggle, MarginProfit } from '../components/holdings/SecurityParts.tsx';
 import {
-  countLabel, DEFAULT_SORT, EMPTY_FILTERS, filterOptions, filterRows, formatJpDate, hasActiveFilters, nextSort,
+  countLabel, DEFAULT_SORT, EMPTY_FILTERS, filterOptions, filterRows, formatJpDate, hasActiveFilters, heldRows, heldSecurities, nextSort,
   SECURITY_SORT_KEYS, securityCountLabel, securityTotals, sortForSecurities, sortRows, sortSecurities, sumValues,
   type Filters, type Sort,
 } from '../components/holdings/holdingsView.ts';
@@ -20,7 +20,7 @@ import './Holdings.css';
 export default function Holdings() {
   const { data, baseDate } = useData();
   const { yen } = useMoney();
-  const { holdingsGrouping: grouping, setHoldingsGrouping } = usePrefs();
+  const { holdingsGrouping: grouping, setHoldingsGrouping, showNotHeld, setShowNotHeld } = usePrefs();
   const bySecurity = grouping === 'security';
   // ホームの「確認が必要」から `#/holdings?unclassified=1` で開かれたら未分類だけを表示する
   const unclassifiedParam = useRouteQuery().get('unclassified') === '1';
@@ -33,15 +33,24 @@ export default function Holdings() {
     setFilters((f) => ({ ...f, unclassifiedOnly: unclassifiedParam }));
   }
 
-  const all = useMemo(() => buildHoldingRows(data, baseDate ?? undefined), [data, baseDate]);
+  const everything = useMemo(() => buildHoldingRows(data, baseDate ?? undefined), [data, baseDate]);
+  // 基準日に保有していない銘柄（シートの空欄）は、設定で表示しない限り隠す。評価額 0 と入力されたものは表示する
+  const all = useMemo(() => heldRows(everything, showNotHeld), [everything, showNotHeld]);
   const options = useMemo(() => filterOptions(all), [all]);
   const matched = useMemo(() => filterRows(all, filters), [all, filters]);
   const visible = useMemo(() => sortRows(matched, sort), [matched, sort]);
   // 銘柄ごと: 先に口座ごとの行で絞り込んでからまとめる（証券会社で絞ればその証券会社にある分だけの合計）
-  const securityCount = useMemo(() => groupBySecurity(all).length, [all]);
-  const securities = useMemo(() => sortSecurities(groupBySecurity(matched), sort), [matched, sort]);
+  const securityCount = useMemo(() => heldSecurities(everything, showNotHeld).length, [everything, showNotHeld]);
+  const securities = useMemo(
+    () => sortSecurities(heldSecurities(filterRows(everything, filters), showNotHeld), sort),
+    [everything, filters, sort, showNotHeld],
+  );
   const totals = useMemo(() => securityTotals(securities), [securities]);
   const unclassifiedCount = useMemo(() => all.filter((r) => r.unclassified).length, [all]);
+  const notHeldCount = useMemo(
+    () => (bySecurity ? groupBySecurity(everything).filter((s) => !s.held).length : everything.filter((r) => !r.held).length),
+    [everything, bySecurity],
+  );
   const filtered = hasActiveFilters(filters);
   const reset = () => setFilters(EMPTY_FILTERS);
   const changeGrouping = (g: HoldingsGrouping) => {
@@ -55,7 +64,7 @@ export default function Holdings() {
   return (
     <section className="holdings">
       <h2 className="sr-only">銘柄一覧</h2>
-      {all.length === 0 ? (
+      {everything.length === 0 ? (
         <p className="note">表示できる銘柄がありません。</p>
       ) : (
         <>
@@ -79,7 +88,13 @@ export default function Holdings() {
           )}
           <div className="h-tools">
             <GroupingToggle value={grouping} onChange={changeGrouping} />
-            <HoldingsFilters filters={filters} options={options} onChange={setFilters} onReset={reset} />
+            <HoldingsFilters
+              filters={filters}
+              options={options}
+              onChange={setFilters}
+              onReset={reset}
+              notHeld={{ count: notHeldCount, shown: showNotHeld, onToggle: () => setShowNotHeld(!showNotHeld) }}
+            />
             <div className="h-sumline">
               {bySecurity ? (
                 <p className="h-count" aria-live="polite">

@@ -11,6 +11,11 @@ export type HoldingRow = {
   region: string;
   /** 名寄せ名（銘柄マスタの D 列）。なければ undefined */
   securityName?: string;
+  /**
+   * 基準日に保有している。シートのセルが空欄なら false（評価額は 0）。
+   * 0 と入力されたセルは true（信用の損益が 0 のときなど、評価額 0 でも保有している）。
+   */
+  held: boolean;
   /** 基準日の評価額（信用は損益） */
   value: number;
   /** 基準日の総資産に対する比率。総資産が 0 なら 0。 */
@@ -35,11 +40,13 @@ export function buildHoldingRows(
   const now = index.get(date);
   const prevDate = previousDate(dates, date);
   const prev = prevDate ? index.get(prevDate) : undefined;
+  const blankNow = new Set(data.snapshots.filter((s) => s.date === date && s.blank).map((s) => s.holdingId));
   const rows = data.holdings.map((h): HoldingRow => {
     const value = now?.get(h.id) ?? 0;
     const previousValue = prevDate ? (prev?.get(h.id) ?? 0) : null;
     return {
       ...h,
+      held: !blankNow.has(h.id),
       value,
       ratio: 0,
       previousValue,

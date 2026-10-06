@@ -19,6 +19,8 @@ export type Snapshot = {
   date: string;
   holdingId: string;
   value: number;
+  /** シートのセルが空欄だった（保有していない）。0 と入力されたセルは含まない。value は 0 になる。 */
+  blank?: true;
 };
 
 export type WarningCode =

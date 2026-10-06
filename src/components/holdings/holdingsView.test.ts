@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildHoldingRows, groupBySecurity } from '../../domain/index.ts';
+import { buildHoldingRows, groupBySecurity, type HoldingRow } from '../../domain/index.ts';
 import type { Holding } from '../../parser/index.ts';
 import { makeData } from '../../domain/fixtures/sampleData.ts';
 import {
   accountRowCount, changeDisplay, changeKind, countLabel, DEFAULT_SORT, EMPTY_FILTERS, filterChipLabel, filterOptions,
-  filterRows, formatJpDate, formatPercent, hasActiveFilters, isExpandable, isNewHolding, isSecuritySortKey, nextSort,
+  filterRows, formatJpDate, formatPercent, hasActiveFilters, heldRows, heldSecurities, isExpandable, isNewHolding, isSecuritySortKey, nextSort,
   profitDisplay, securityAccountLabel, securityCountLabel, securityTotals, sortForSecurities, sortLabel, sortRows,
   sortSecurities, sumValues,
 } from './holdingsView.ts';
@@ -274,5 +274,28 @@ describe('changeDisplay（銘柄ごとの行）', () => {
   it('合計どうしの前回比を出す', () => {
     expect(changeDisplay(sec('テスト投信P'), yenPlain, false)).toEqual({ kind: 'up', symbol: '▲', text: '+¥20（+5.0%）' });
     expect(changeDisplay(sec('テスト投信S'), yenPlain, false).kind).toBe('new');
+  });
+});
+
+describe('保有なしの絞り込み', () => {
+  const mk = (id: string, name: string, held: boolean, value: number, prev: number | null): HoldingRow => ({
+    id, broker: '架空証券', account: '特定口座', name, assetClass: '国内株', region: '日本', held, value, ratio: 0,
+    previousValue: prev, change: prev === null ? null : { amount: value - prev, percent: prev === 0 ? null : ((value - prev) / prev) * 100 },
+    unclassified: false,
+  });
+  const rows = [mk('a', '架空株A', true, 100, 90), mk('b', '架空株B', false, 0, 50), mk('c', '架空株C', true, 0, 0)];
+
+  it('既定では空欄の行を除く。評価額 0 と入力された行は残す', () => {
+    expect(heldRows(rows, false).map((r) => r.id)).toEqual(['a', 'c']);
+    expect(heldRows(rows, true).map((r) => r.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('銘柄ごとでは、保有なしの銘柄だけを除く（まとめた後に除く）', () => {
+    const grouped = [mk('p1', '架空投信P', true, 90, 100), { ...mk('p2', '架空投信P', false, 0, 60) }, mk('q', '架空株Q', false, 0, 80)];
+    const s = heldSecurities(grouped, false);
+    expect(s.map((x) => x.name)).toEqual(['架空投信P']);
+    // 売った口座の前回の値も前回比に含まれる
+    expect(s[0]!.previousValue).toBe(160);
+    expect(heldSecurities(grouped, true).map((x) => x.name).sort()).toEqual(['架空投信P', '架空株Q']);
   });
 });
