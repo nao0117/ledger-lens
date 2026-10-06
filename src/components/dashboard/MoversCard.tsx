@@ -9,7 +9,7 @@ type Props = {
   colorOf: (assetClass: string) => string;
 };
 
-/** 今月の動き: 前回比の寄与が大きい銘柄。横棒は最大の絶対値を基準に、増加は右・減少は左へ伸ばす。 */
+/** 今月の動き: 前回比の寄与が大きい銘柄（口座をまたいで同じ銘柄はまとめる）。横棒は最大の絶対値を基準に、増加は右・減少は左へ伸ばす。 */
 export function MoversCard({ movers, previousDate, colorOf }: Props) {
   return (
     <section className="card home-card home-movers" aria-labelledby="home-movers-h">
@@ -31,6 +31,7 @@ export function MoversCard({ movers, previousDate, colorOf }: Props) {
                 <span className="mv-name">
                   <span className="mv-dot" style={{ background: colorOf(m.assetClass) }} aria-hidden="true" />
                   <span className="mv-name-text">{m.name}</span>
+                  {m.accounts > 1 && <small className="mv-accounts">{m.accounts}口座</small>}
                 </span>
                 <span className="mv-amt">
                   <Delta amount={m.amount} />

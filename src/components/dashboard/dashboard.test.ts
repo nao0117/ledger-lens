@@ -38,6 +38,31 @@ describe('topMovers', () => {
     expect(m.items).toHaveLength(7);
     expect(m.rest).toEqual({ count: 0, amount: 0 });
   });
+  it('口座をまたいだ同じ銘柄は1件にまとめ、信用の損益の変化も寄与に含める', () => {
+    const hs = [
+      { id: 'a', name: '架空投信X', assetClass: '投資信託', broker: '架空証券0', account: 'NISA成長投資枠', region: '' },
+      { id: 'b', name: '架空投信X', assetClass: '投資信託', broker: '架空証券1', account: '特定口座', region: '' },
+      { id: 'c', name: '架空投信X(愛称)', securityName: '架空投信X', assetClass: '投資信託', broker: '架空証券1', account: 'NISAつみたて投資枠', region: '' },
+      { id: 'd', name: '架空米国株Y', assetClass: '米国株', broker: '架空証券0', account: '特定口座', region: '' },
+      { id: 'e', name: '架空米国株Y', assetClass: '米国株', broker: '架空証券0', account: '信用', region: '' },
+    ];
+    const before = [100, 200, 300, 400, -10];
+    const after = [110, 220, 330, 390, -40];
+    const d = {
+      holdings: hs,
+      dates: ['2026-08-31', '2026-09-30'],
+      snapshots: hs.flatMap((h, i) => [
+        { date: '2026-08-31', holdingId: h.id, value: before[i]! },
+        { date: '2026-09-30', holdingId: h.id, value: after[i]! },
+      ]),
+    } as never;
+    const m = topMovers(buildHoldingRows(d, '2026-09-30'), 5)!;
+    expect(m.items.map((i) => [i.name, i.amount, i.accounts])).toEqual([
+      ['架空投信X', 60, 3],
+      ['架空米国株Y', -10 - 30, 2],
+    ]);
+    expect(m.total).toBe(60 - 40);
+  });
   it('全部 0 なら空の一覧', () => {
     const rows = buildHoldingRows(data, '2026-09-30').map((r) => ({ ...r, change: { amount: 0, percent: 0 } }));
     expect(topMovers(rows, 5)).toEqual({ items: [], rest: { count: 0, amount: 0 }, total: 0 });
