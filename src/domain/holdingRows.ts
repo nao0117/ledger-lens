@@ -9,6 +9,8 @@ export type HoldingRow = {
   name: string;
   assetClass: string;
   region: string;
+  /** 名寄せ名（銘柄マスタの D 列）。なければ undefined */
+  securityName?: string;
   /** 基準日の評価額（信用は損益） */
   value: number;
   /** 基準日の総資産に対する比率。総資産が 0 なら 0。 */

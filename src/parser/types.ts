@@ -10,6 +10,8 @@ export type Holding = {
   name: string;
   assetClass: string;
   region: string;
+  /** 名寄せ名（銘柄マスタの D 列）。口座をまたいで同じ銘柄として合算するときの名前。なければ name を使う。 */
+  securityName?: string;
 };
 
 export type Snapshot = {
@@ -31,7 +33,9 @@ export type WarningCode =
   | 'incomplete-master-row'
   | 'unknown-asset-class'
   | 'unknown-region'
-  | 'missing-master';
+  | 'missing-master'
+  | 'security-class-conflict'
+  | 'security-alias-suggestion';
 
 export type ParseWarning = {
   code: WarningCode;
