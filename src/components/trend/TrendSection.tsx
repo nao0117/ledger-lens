@@ -14,6 +14,7 @@ const BY_OPTIONS: { value: TrendBy; label: string }[] = [
   { value: 'assetClass', label: '資産クラス' },
   { value: 'broker', label: '証券会社' },
   { value: 'account', label: '口座' },
+  { value: 'security', label: '銘柄' },
 ];
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: '1y', label: '1年' },
@@ -68,7 +69,9 @@ export default function TrendSection({ data, endDate, className = '' }: Props) {
               {legend.map((l) => (
                 <li key={l.key}>
                   <span className="trend-swatch" style={{ background: l.color }} aria-hidden="true" />
-                  <span className="trend-legend-name">{l.key}</span>
+                  <span className="trend-legend-name" title={l.label}>
+                    {l.label}
+                  </span>
                   <span className="trend-legend-ratio num">{l.ratio === null ? '-' : formatRatio(l.ratio)}</span>
                 </li>
               ))}
@@ -80,6 +83,7 @@ export default function TrendSection({ data, endDate, className = '' }: Props) {
               )}
             </ul>
           )}
+          {by === 'security' && <p className="note">同じ銘柄は口座をまたいでまとめています。信用の損益は、同じ銘柄に含めています。</p>}
         </>
       )}
       <TrendTable model={model} />

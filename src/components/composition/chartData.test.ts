@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cellKey, changeView, dateJa, fitLabel, isUnclassified, legendClasses, ratioText, toCellNodes, truncateToWidth,
+  cellKey, changeView, dateJa, fitLabel, isUnclassified, legendClasses, ratioText, toCellNodes, toSecurityCellNodes, truncateToWidth,
 } from './chartData.ts';
 
 describe('ratioText', () => {
@@ -93,5 +93,16 @@ describe('fitLabel', () => {
   });
   it('十分大きければ全文と割合', () => {
     expect(fitLabel(200, 50, '銘柄')).toEqual({ name: '銘柄', showRatio: true });
+  });
+});
+
+describe('toSecurityCellNodes', () => {
+  it('資産クラス → 銘柄の 2 階層にし、割合は総資産比のまま持つ', () => {
+    const nodes = toSecurityCellNodes([
+      { name: '投資信託', value: 30, ratio: 0.6, children: [{ id: 'k', name: '架空A', assetClass: '投資信託', value: 30, ratio: 0.6, accountCount: 2 }] },
+    ]);
+    expect(nodes[0]!.assetClass).toBe('投資信託');
+    expect(nodes[0]!.children![0]).toMatchObject({ id: 'k', path: ['投資信託', '架空A'], ratio: 0.6 });
+    expect(legendClasses(nodes)).toEqual(['投資信託']);
   });
 });

@@ -6,6 +6,7 @@ import {
   formatDateJa,
   formatMonthLabel,
   maxAbsValue,
+  seriesLabel,
   tickInterval,
   trendColor,
   type TrendBy,
@@ -16,14 +17,15 @@ import {
 type TipProps = {
   active?: boolean;
   payload?: { payload: TrendRow }[];
-  keys: string[];
+  model: TrendModel;
   by: TrendBy;
   yen: (v: number) => string;
 };
 
-function TrendTooltip({ active, payload, keys, by, yen }: TipProps) {
+function TrendTooltip({ active, payload, model, by, yen }: TipProps) {
   const row = payload?.[0]?.payload;
   if (!active || !row) return null;
+  const { keys } = model;
   return (
     <div className="trend-tip">
       <strong>{formatDateJa(row.date)}</strong>
@@ -32,7 +34,7 @@ function TrendTooltip({ active, payload, keys, by, yen }: TipProps) {
           {keys.map((k, i) => (
             <li key={k}>
               <span className="trend-swatch" style={{ background: trendColor(by, k, i) }} aria-hidden="true" />
-              {k}: {yen(row.values[k] ?? 0)}
+              {seriesLabel(model, k)}: {yen(row.values[k] ?? 0)}
             </li>
           ))}
         </ul>
@@ -71,7 +73,7 @@ export default function TrendChart({ model, by }: { model: TrendModel; by: Trend
             tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
             stroke="var(--border)"
           />
-          <Tooltip content={<TrendTooltip keys={keys} by={by} yen={yen} />} />
+          <Tooltip content={<TrendTooltip model={model} by={by} yen={yen} />} />
           {keys.map((k, i) => (
             <Area
               key={k}

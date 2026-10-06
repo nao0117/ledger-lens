@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { inset, squarify, type Rect } from './squarify.ts';
-import { layoutTreemap } from './layout.ts';
-import { toCellNodes } from './chartData.ts';
+import { HEADER_H, layoutGrouped, layoutTreemap } from './layout.ts';
+import { toCellNodes, type CellNode } from './chartData.ts';
 
 const EPS = 1e-6;
 const area = (r: Rect) => r.width * r.height;
@@ -114,5 +114,58 @@ describe('layoutTreemap', () => {
   it('空・大きさ 0 でも壊れない', () => {
     expect(layoutTreemap([], box)).toEqual({ brokers: [], accounts: [], leaves: [] });
     expect(layoutTreemap(nodes, { x: 0, y: 0, width: 0, height: 0 }).leaves).toEqual([]);
+  });
+});
+
+describe('layoutGrouped', () => {
+  const leaf = (name: string, value: number): CellNode => ({ name, value, path: ['G', name], ratio: 0, id: name, assetClass: 'G' });
+  const nodes: CellNode[] = [
+    { name: 'G1', value: 60, path: ['G1'], ratio: 0, children: [leaf('a', 40), leaf('b', 20)] },
+    { name: 'G2', value: 40, path: ['G2'], ratio: 0, children: [leaf('c', 30), leaf('d', 10)] },
+  ];
+  const rect = { x: 0, y: 0, width: 400, height: 300 };
+  const l = layoutGrouped(nodes, rect);
+  const area = (r: { width: number; height: number }) => r.width * r.height;
+
+  it('大きい箱には見出し帯が付き、葉は見出し帯の下に収まる', () => {
+    expect(l.groups).toHaveLength(2);
+    expect(l.groups.every((g) => g.header)).toBe(true);
+    for (const { node, rect: lr } of l.leaves) {
+      const g = l.groups.find((x) => x.node.children?.includes(node))!;
+      expect(lr.y).toBeGreaterThanOrEqual(g.rect.y + HEADER_H - 1e-6);
+      expect(lr.x).toBeGreaterThanOrEqual(g.rect.x - 1e-6);
+      expect(lr.x + lr.width).toBeLessThanOrEqual(g.rect.x + g.rect.width + 1e-6);
+      expect(lr.y + lr.height).toBeLessThanOrEqual(g.rect.y + g.rect.height + 1e-6);
+    }
+  });
+
+  it('同じ箱の中で面積が値に比例する', () => {
+    const a = l.leaves.find((x) => x.node.name === 'a')!;
+    const b = l.leaves.find((x) => x.node.name === 'b')!;
+    expect(area(a.rect) / area(b.rect)).toBeCloseTo(2, 5);
+  });
+
+  it('葉どうしは重ならず、全体からはみ出さない', () => {
+    for (const x of l.leaves) {
+      expect(x.rect.x).toBeGreaterThanOrEqual(0);
+      expect(x.rect.y).toBeGreaterThanOrEqual(0);
+      expect(x.rect.x + x.rect.width).toBeLessThanOrEqual(400 + 1e-6);
+      expect(x.rect.y + x.rect.height).toBeLessThanOrEqual(300 + 1e-6);
+    }
+    for (let i = 0; i < l.leaves.length; i += 1) {
+      for (let j = i + 1; j < l.leaves.length; j += 1) {
+        const p = l.leaves[i]!.rect;
+        const q = l.leaves[j]!.rect;
+        const overlap = p.x < q.x + q.width - 1e-6 && q.x < p.x + p.width - 1e-6 && p.y < q.y + q.height - 1e-6 && q.y < p.y + p.height - 1e-6;
+        expect(overlap).toBe(false);
+      }
+    }
+  });
+
+  it('小さい箱では見出し帯を省く。空や大きさ 0 では何も返さない', () => {
+    const small = layoutGrouped(nodes, { x: 0, y: 0, width: 60, height: 40 });
+    expect(small.groups.some((g) => !g.header)).toBe(true);
+    expect(layoutGrouped([], rect)).toEqual({ groups: [], leaves: [] });
+    expect(layoutGrouped(nodes, { x: 0, y: 0, width: 0, height: 0 }).leaves).toEqual([]);
   });
 });

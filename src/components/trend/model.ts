@@ -11,7 +11,12 @@ export const OTHER_LABEL = 'その他';
 export const MAX_SERIES = 8;
 
 export type TrendRow = { date: string; values: Record<string, number>; total: number };
-export type TrendModel = { keys: string[]; rows: TrendRow[] };
+export type TrendModel = {
+  keys: string[];
+  rows: TrendRow[];
+  /** 「その他」にまとめた銘柄の数（内訳が銘柄で、まとめたときだけ） */
+  otherCount?: number;
+};
 
 /**
  * グラフと表に使う系列を作る純粋関数。by='none' は総資産だけの1系列。
@@ -37,9 +42,11 @@ export function buildTrendModel(
   const rows = upToEnd(series.rows);
   // 系列の並びは終点（基準日）の値が大きい順にする
   const last = rows[rows.length - 1];
+  // 表示期間のどの日も 0 の系列（保有したことのない銘柄など）は、凡例に 0.0% が並ぶだけなので除く
+  const used = series.keys.filter((k) => rows.some((r) => (r.values[k] ?? 0) !== 0));
   const sorted = last
-    ? [...series.keys].sort((a, b) => (last.values[b] ?? 0) - (last.values[a] ?? 0) || a.localeCompare(b))
-    : series.keys;
+    ? [...used].sort((a, b) => (last.values[b] ?? 0) - (last.values[a] ?? 0) || a.localeCompare(b))
+    : used;
   if (sorted.length <= MAX_SERIES) return { keys: sorted, rows };
   // 「その他」という名前のグループがあれば、まとめる側に入れる（名前の衝突で値が上書きされないように）
   const head = sorted.filter((k) => k !== OTHER_LABEL).slice(0, MAX_SERIES - 1);
@@ -47,6 +54,7 @@ export function buildTrendModel(
   const tail = sorted.filter((k) => !headSet.has(k));
   return {
     keys: [...head, OTHER_LABEL],
+    ...(by === 'security' ? { otherCount: tail.length } : {}),
     rows: rows.map((r) => ({
       date: r.date,
       total: r.total,
@@ -62,16 +70,23 @@ export function buildTrendModel(
 export function trendColor(by: TrendBy, key: string, index: number): string {
   if (by === 'none') return 'var(--accent)';
   if (by === 'assetClass') return assetClassColor(key, index);
+  if (key === OTHER_LABEL && by === 'security') return 'var(--series-other)';
   return seriesColor(index);
 }
 
-export type LegendItem = { key: string; color: string; /** 終点の総資産に対する比率（0〜1）。総資産が 0 なら null */ ratio: number | null };
+/** 凡例・表の表示名。銘柄の内訳で「その他」にまとめたときは件数を付ける。 */
+export function seriesLabel(model: Pick<TrendModel, 'otherCount'>, key: string): string {
+  return key === OTHER_LABEL && model.otherCount ? `${OTHER_LABEL}（${model.otherCount}銘柄）` : key;
+}
+
+export type LegendItem = { key: string; /** 表示名 */ label: string; color: string; /** 終点の総資産に対する比率（0〜1）。総資産が 0 なら null */ ratio: number | null };
 
 /** 凡例（色・名前・終点時点の比率）。 */
 export function buildLegend(model: TrendModel, by: TrendBy): LegendItem[] {
   const last = model.rows[model.rows.length - 1];
   return model.keys.map((key, i) => ({
     key,
+    label: seriesLabel(model, key),
     color: trendColor(by, key, i),
     ratio: last && last.total !== 0 ? (last.values[key] ?? 0) / last.total : null,
   }));

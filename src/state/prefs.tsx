@@ -5,7 +5,17 @@ export type Theme = 'system' | 'light' | 'dark';
 /** 銘柄画面の表示単位。security: 口座をまたいで同じ銘柄をまとめる / account: 口座ごと */
 export type HoldingsGrouping = 'security' | 'account';
 
-type Prefs = { mask: boolean; theme: Theme; period: Period; holdingsGrouping: HoldingsGrouping; showNotHeld: boolean };
+/** 構成画面の切り口。account: 証券会社 → 口座区分 → 銘柄 / security: 資産クラス → 銘柄 */
+export type CompositionBy = 'account' | 'security';
+
+type Prefs = {
+  mask: boolean;
+  theme: Theme;
+  period: Period;
+  holdingsGrouping: HoldingsGrouping;
+  showNotHeld: boolean;
+  compositionBy: CompositionBy;
+};
 type PrefsContextValue = Prefs & {
   setMask: (mask: boolean) => void;
   setTheme: (theme: Theme) => void;
@@ -13,11 +23,12 @@ type PrefsContextValue = Prefs & {
   setHoldingsGrouping: (holdingsGrouping: HoldingsGrouping) => void;
   /** 銘柄画面で、基準日に保有していない銘柄（シートの空欄）も表示する */
   setShowNotHeld: (showNotHeld: boolean) => void;
+  setCompositionBy: (compositionBy: CompositionBy) => void;
 };
 
 // localStorage に保存してよいのは表示設定だけ（金額やトークンは入れない）。
 const STORAGE_KEY = 'ledger-lens:prefs';
-const DEFAULTS: Prefs = { mask: false, theme: 'system', period: '3y', holdingsGrouping: 'security', showNotHeld: false };
+const DEFAULTS: Prefs = { mask: false, theme: 'system', period: '3y', holdingsGrouping: 'security', showNotHeld: false, compositionBy: 'account' };
 
 function load(): Prefs {
   try {
@@ -31,6 +42,7 @@ function load(): Prefs {
       holdingsGrouping:
         r.holdingsGrouping === 'security' || r.holdingsGrouping === 'account' ? r.holdingsGrouping : DEFAULTS.holdingsGrouping,
       showNotHeld: typeof r.showNotHeld === 'boolean' ? r.showNotHeld : DEFAULTS.showNotHeld,
+      compositionBy: r.compositionBy === 'account' || r.compositionBy === 'security' ? r.compositionBy : DEFAULTS.compositionBy,
     };
   } catch {
     return DEFAULTS;
@@ -64,6 +76,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       setPeriod: (period) => setPrefs((p) => ({ ...p, period })),
       setHoldingsGrouping: (holdingsGrouping) => setPrefs((p) => ({ ...p, holdingsGrouping })),
       setShowNotHeld: (showNotHeld) => setPrefs((p) => ({ ...p, showNotHeld })),
+      setCompositionBy: (compositionBy) => setPrefs((p) => ({ ...p, compositionBy })),
     }),
     [prefs],
   );
