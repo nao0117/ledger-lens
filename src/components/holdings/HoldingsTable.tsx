@@ -1,7 +1,9 @@
 import type { HoldingRow } from '../../domain/index.ts';
 import { assetClassColor } from '../colors.ts';
 import { useMoney } from '../Money.tsx';
-import { changeKind, formatPercent, isNewHolding, SORT_LABELS, type Sort, type SortKey } from './holdingsView.ts';
+import {
+  changeKind, formatPercent, isNewHolding, SORT_LABELS, type ChangeSource, type Sort, type SortKey,
+} from './holdingsView.ts';
 
 type Column = { key: SortKey; label: string; numeric?: boolean };
 
@@ -15,12 +17,12 @@ export const COLUMNS: Column[] = (Object.keys(SORT_LABELS) as SortKey[]).map((ke
 
 const ARROW = { up: '▲', down: '▼', flat: '±', none: '' } as const;
 
-function ariaSort(sort: Sort, key: SortKey): 'ascending' | 'descending' | 'none' {
+export function ariaSort(sort: Sort, key: SortKey): 'ascending' | 'descending' | 'none' {
   if (sort.key !== key) return 'none';
   return sort.dir === 'asc' ? 'ascending' : 'descending';
 }
 
-function ChangeAmount({ row }: { row: HoldingRow }) {
+export function ChangeAmount({ row }: { row: ChangeSource }) {
   const { yen, mask } = useMoney();
   const kind = changeKind(row);
   if (!row.change) return <span className="h-muted">―</span>;
@@ -34,7 +36,7 @@ function ChangeAmount({ row }: { row: HoldingRow }) {
   );
 }
 
-function ChangePercent({ row }: { row: HoldingRow }) {
+export function ChangePercent({ row }: { row: ChangeSource }) {
   const kind = changeKind(row);
   if (!row.change) return <span className="h-muted">―</span>;
   if (row.change.percent === null) {

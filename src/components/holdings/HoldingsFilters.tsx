@@ -82,7 +82,14 @@ export function HoldingsFilters({
 }
 
 /** 並べ替え: キーを選ぶ select と、昇順・降順を切り替えるボタン。 */
-export function SortChip({ sort, onChange }: { sort: Sort; onChange: (next: Sort) => void }) {
+export function SortChip({
+  sort, onChange, keys = Object.keys(SORT_LABELS) as SortKey[],
+}: {
+  sort: Sort;
+  onChange: (next: Sort) => void;
+  /** 選べる並べ替えキー（省略時はすべて） */
+  keys?: readonly SortKey[];
+}) {
   const asc = sort.dir === 'asc';
   return (
     <span className="h-sortchip">
@@ -97,7 +104,7 @@ export function SortChip({ sort, onChange }: { sort: Sort; onChange: (next: Sort
             onChange({ key, dir: defaultDir(key) });
           }}
         >
-          {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+          {keys.map((k) => (
             <option key={k} value={k}>{SORT_LABELS[k]}</option>
           ))}
         </select>

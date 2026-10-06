@@ -1,4 +1,4 @@
-import type { HoldingRow } from '../../domain/index.ts';
+import type { HoldingRow, SecurityRow } from '../../domain/index.ts';
 
 export type SortKey = 'name' | 'broker' | 'account' | 'assetClass' | 'value' | 'ratio' | 'changeAmount' | 'changePercent';
 export type SortDir = 'asc' | 'desc';
@@ -98,8 +98,11 @@ export function filterOptions(rows: readonly HoldingRow[]): FilterOptions {
 
 export type ChangeKind = 'none' | 'up' | 'down' | 'flat';
 
+/** 前回比の表示に使う値（口座ごとの行・銘柄ごとの行の共通部分）。 */
+export type ChangeSource = Pick<HoldingRow, 'value' | 'previousValue' | 'change'>;
+
 /** 前回比の表示種別。none は前回の日付がない場合。 */
-export function changeKind(row: HoldingRow): ChangeKind {
+export function changeKind(row: ChangeSource): ChangeKind {
   if (!row.change) return 'none';
   if (row.change.amount > 0) return 'up';
   if (row.change.amount < 0) return 'down';
@@ -107,7 +110,7 @@ export function changeKind(row: HoldingRow): ChangeKind {
 }
 
 /** 前回が 0 で今回が 0 以外（新規）。% が出せない。 */
-export function isNewHolding(row: HoldingRow): boolean {
+export function isNewHolding(row: ChangeSource): boolean {
   return row.change !== null && row.change.percent === null && row.previousValue === 0 && row.value !== 0;
 }
 
@@ -176,7 +179,7 @@ const SYMBOL: Readonly<Record<ChangeKind, string>> = { up: '▲', down: '▼', f
  * 一覧の2行目に出す前回比（row.change.percent は % 値。0.1234 ではなく 12.34）（例: `+¥48,000（+2.3%）`）。
  * yen はマスク込みの金額整形。前回なしは `―`、新規は `新規`、増減なしは `変化なし`。
  */
-export function changeDisplay(row: HoldingRow, yen: (v: number) => string, mask: boolean): ChangeDisplay {
+export function changeDisplay(row: ChangeSource, yen: (v: number) => string, mask: boolean): ChangeDisplay {
   const kind = changeKind(row);
   if (!row.change || kind === 'none') return { kind: 'none', symbol: '', text: '―' };
   if (isNewHolding(row)) return { kind: 'new', symbol: '', text: '新規' };
@@ -185,4 +188,89 @@ export function changeDisplay(row: HoldingRow, yen: (v: number) => string, mask:
   const money = mask ? yen(amount) : `${amount > 0 ? '+' : ''}${yen(amount)}`;
   const pct = row.change.percent === null ? '' : `（${formatPercent(row.change.percent / 100, true)}）`;
   return { kind, symbol: SYMBOL[kind], text: `${money}${pct}` };
+}
+
+/* ---- 銘柄ごと（口座をまたいでまとめた）表示 ---- */
+
+/** 銘柄ごとの表示で選べる並べ替えキー（証券会社・口座区分は1行に複数あるので選べない）。 */
+export const SECURITY_SORT_KEYS: readonly SortKey[] = ['name', 'assetClass', 'value', 'ratio', 'changeAmount', 'changePercent'];
+
+export function isSecuritySortKey(key: SortKey): boolean {
+  return SECURITY_SORT_KEYS.includes(key);
+}
+
+/** 銘柄ごとの表示で使えない並べ替えなら、評価額の降順に戻す。 */
+export function sortForSecurities(sort: Sort): Sort {
+  return isSecuritySortKey(sort.key) ? sort : DEFAULT_SORT;
+}
+
+function securityNumeric(row: SecurityRow, key: SortKey): number | null {
+  switch (key) {
+    case 'value': return row.value;
+    case 'ratio': return row.ratio;
+    case 'changeAmount': return row.change ? row.change.amount : null;
+    case 'changePercent': return row.change ? row.change.percent : null;
+    default: return null;
+  }
+}
+
+/** 銘柄ごとの行の並べ替え（元の配列は変更しない）。規則は sortRows と同じ（null は末尾、同値はキー順）。 */
+export function sortSecurities(rows: readonly SecurityRow[], sort: Sort): SecurityRow[] {
+  const s = sortForSecurities(sort);
+  const sign = s.dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let c: number;
+    if (s.key === 'name' || s.key === 'assetClass') {
+      c = sign * a[s.key].localeCompare(b[s.key], 'ja');
+    } else {
+      const x = securityNumeric(a, s.key);
+      const y = securityNumeric(b, s.key);
+      if (x === null && y === null) c = 0;
+      else if (x === null) return 1;
+      else if (y === null) return -1;
+      else c = sign * (x - y);
+    }
+    return c || a.key.localeCompare(b.key);
+  });
+}
+
+/** まとめた口座の行数（信用を含む）。 */
+export function accountRowCount(rows: readonly SecurityRow[]): number {
+  return rows.reduce((a, r) => a + r.members.length + r.marginMembers.length, 0);
+}
+
+/** 件数の文言（銘柄ごと）。例: `32銘柄（48口座）`、絞り込み中は `3 / 32銘柄（5口座）`。口座数は表示中の行のもの。 */
+export function securityCountLabel(visible: readonly SecurityRow[], allCount: number, filtered: boolean): string {
+  const head = filtered ? `${visible.length} / ${allCount}銘柄` : `${allCount}銘柄`;
+  return `${head}（${accountRowCount(visible)}口座）`;
+}
+
+/** 合計（銘柄ごと）。value は評価額の合計（信用の損益は含めない）、margin は信用の損益の合計（なければ null）。 */
+export function securityTotals(rows: readonly SecurityRow[]): { value: number; margin: number | null } {
+  let value = 0;
+  let margin: number | null = null;
+  for (const r of rows) {
+    if (!r.marginOnly) value += r.value;
+    if (r.marginValue !== null) margin = (margin ?? 0) + r.marginValue;
+  }
+  return { value, margin };
+}
+
+/** 内訳を開けるか（口座が2つ以上、または評価額の行と信用の行の両方がある）。 */
+export function isExpandable(row: SecurityRow): boolean {
+  return row.members.length + row.marginMembers.length >= 2;
+}
+
+/** 2行目の口座の文言。口座が1つなら `証券会社・口座区分`、2つ以上なら `3口座`。信用だけの銘柄は信用の行で数える。 */
+export function securityAccountLabel(row: SecurityRow): string {
+  const basis = row.marginOnly ? row.marginMembers : row.members;
+  const only = basis.length === 1 ? basis[0] : undefined;
+  return only ? `${only.broker}・${only.account}` : `${basis.length}口座`;
+}
+
+/** 損益の表示（例: `▲ +¥12,000`）。マスク中は符号を付けない（yen が伏せ字を返す）。 */
+export function profitDisplay(value: number, yen: (v: number) => string, mask: boolean): ChangeDisplay {
+  const kind: ChangeKind = value > 0 ? 'up' : value < 0 ? 'down' : 'flat';
+  const text = mask ? yen(value) : `${value > 0 ? '+' : ''}${yen(value)}`;
+  return { kind, symbol: SYMBOL[kind], text };
 }
