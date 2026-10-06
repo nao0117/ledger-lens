@@ -1,109 +1,345 @@
-.holdings {
-  --h-up: #1a7f37;
-  --h-down: #c62828;
-  --h-warn-bg: #fff4d6;
-  --h-warn-border: #c27c00;
-  --h-warn-text: #6b4500;
-}
+/* 銘柄一覧。色はすべて tokens.css を参照する。 */
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .holdings {
-    --h-up: #5fd08a;
-    --h-down: #ff8a80;
-    --h-warn-bg: #3a2c0a;
-    --h-warn-border: #e0a030;
-    --h-warn-text: #ffd98a;
-  }
-}
-
-:root[data-theme='dark'] .holdings {
-  --h-up: #5fd08a;
-  --h-down: #ff8a80;
-  --h-warn-bg: #3a2c0a;
-  --h-warn-border: #e0a030;
-  --h-warn-text: #ffd98a;
+.h-lead {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 
 .h-alert {
-  margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--h-warn-bg);
-  color: var(--h-warn-text);
-  border: 1px solid var(--h-warn-border);
-  border-radius: 8px;
-  font-size: 0.875rem;
-}
-
-/* 絞り込み */
-.h-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.75rem;
-  align-items: end;
-  margin-bottom: 0.75rem;
-}
-
-.h-field {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  min-width: 0;
-}
-
-.h-field-wide {
-  grid-column: 1 / -1;
-}
-
-.h-field select,
-.h-field input {
-  min-height: 2.5rem;
-  padding: 0 0.5rem;
-  font: inherit;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  min-width: 0;
-}
-
-.h-check {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 2.5rem;
-  font-size: 0.9375rem;
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0.375rem 0.375rem 0.375rem 0.75rem;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border: 1px solid var(--warn-border);
+  border-radius: 10px;
+  font-size: 0.8125rem;
 }
 
-.h-reset,
-.h-sort {
+.h-alert > span {
+  flex: 1 1 14rem;
+}
+
+.h-alert-action {
+  min-height: var(--tap);
+  margin-left: auto;
+  padding: 0 0.875rem;
   font: inherit;
-  color: inherit;
+  font-weight: 700;
+  color: var(--warn-fg);
+  background: var(--surface);
+  border: 1px solid var(--warn-border);
+  border-radius: 8px;
   cursor: pointer;
 }
 
-.h-reset {
-  min-height: 2.5rem;
-  background: var(--surface);
+.h-alert-action[aria-pressed='true'] {
+  background: var(--warn-bg);
+  box-shadow: inset 0 0 0 1px var(--warn-border);
+}
+
+.h-alert-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* 検索・チップ・件数 */
+.h-tools {
+  margin-bottom: 0.5rem;
+}
+
+.h-filters {
+  margin: 0;
+}
+
+.h-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  padding: 0 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.h-search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.h-search svg {
+  flex: none;
+}
+
+.h-search input {
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem;
+  padding: 0;
+  font: inherit;
+  font-size: 1rem; /* iOS のズームを避ける */
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: none;
+  border: 0;
+  outline: none;
 }
 
-.h-sort-mobile {
+.h-chips {
+  display: flex;
+  gap: 0.375rem;
+  margin: 0.25rem -1rem 0;
+  padding: 0.25rem 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.h-chips::-webkit-scrollbar {
   display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
 }
 
-/* 表 */
-.h-table-wrap {
+.h-chip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+/* 見た目は 36px、タップ領域は上下に広げて 44px */
+.h-chip::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.h-chip:focus-visible,
+.h-chip-select:has(select:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.h-chip-select {
+  padding-right: 0.5rem;
+}
+
+.h-chip-select select {
+  position: absolute;
+  inset: -4px 0;
+  z-index: 1;
+  width: 100%;
+  font-size: 1rem;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.h-chev {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.h-chip.is-on {
+  font-weight: 700;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.h-chip.is-on .h-chev {
+  color: currentcolor;
+}
+
+.h-chip-warn {
+  color: var(--warn-fg);
+  border-color: var(--warn-border);
+}
+
+.h-chip-warn.is-on {
+  color: var(--warn-fg);
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+
+.h-chip-clear {
+  color: var(--text-muted);
+  background: none;
+  border-style: dashed;
+}
+
+.h-sumline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.h-count {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.h-total {
+  color: var(--text);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.h-sortchip {
+  display: inline-flex;
+  flex: none;
+  gap: 0.25rem;
+}
+
+.h-sortchip .h-chip-select {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.h-dir {
+  justify-content: center;
+  width: 2.25rem;
+  padding: 0;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.h-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.h-empty p {
+  margin: 0 0 0.5rem;
+}
+
+/* スマホ: 2行リスト */
+.hl {
+  margin: 0 -1rem;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border-block: 1px solid var(--border);
+}
+
+.hl-row {
+  min-height: 3.5rem;
+  padding: 0.5rem 1rem 0.5rem 0.75rem;
+  border-left: 4px solid transparent;
+  box-sizing: border-box;
+}
+
+.hl-row + .hl-row {
+  border-top: 1px solid var(--border);
+}
+
+.hl-row.is-unc {
+  border-left-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+
+.hl-r1 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.hl-sw {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 2px;
+}
+
+.hl-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-val {
+  flex: none;
+  margin-left: auto;
+  font-weight: 700;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.hl-r2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.125rem;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.hl-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-chg {
+  flex: none;
+  font-weight: 600;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.h-badge {
+  display: inline-block;
+  flex: none;
+  padding: 0.0625rem 0.375rem;
+  background: var(--surface);
+  color: var(--warn-fg);
+  border: 1px solid var(--warn-border);
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.h-up { color: var(--up); }
+.h-down { color: var(--down); }
+.h-new { color: var(--accent); }
+.h-flat,
+.h-none,
+.h-muted { color: var(--text-muted); }
+
+/* PC: 表 */
+.h-table-wrap {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-x: auto;
 }
 
 .h-table {
@@ -121,6 +357,10 @@
   overflow-wrap: anywhere;
 }
 
+.h-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
 .h-table thead th {
   padding: 0;
   white-space: nowrap;
@@ -130,7 +370,13 @@
 
 .h-table .h-num {
   text-align: right;
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.h-table thead .h-num {
+  font-family: inherit;
 }
 
 .h-table thead .h-num .h-sort {
@@ -142,15 +388,24 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.5rem 0.625rem;
+  min-height: var(--tap);
+  padding: 0 0.625rem;
+  font: inherit;
+  color: inherit;
   background: none;
   border: 0;
   text-align: inherit;
+  cursor: pointer;
 }
 
 .h-sort:hover,
 .h-sort:focus-visible {
   color: var(--accent);
+}
+
+.h-sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .h-sort-mark {
@@ -172,86 +427,56 @@
   margin-right: 0.5rem;
 }
 
-.h-badge {
+.h-swatch {
   display: inline-block;
-  padding: 0.0625rem 0.5rem;
-  background: var(--h-warn-bg);
-  color: var(--h-warn-text);
-  border: 1px solid var(--h-warn-border);
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.375rem;
+  border-radius: 2px;
 }
 
 .h-row-unclassified {
-  box-shadow: inset 4px 0 0 var(--h-warn-border);
+  background: var(--warn-bg);
+  box-shadow: inset 4px 0 0 var(--warn-border);
 }
 
-.h-up { color: var(--h-up); }
-.h-down { color: var(--h-down); }
-.h-flat,
-.h-muted { color: var(--text-muted); }
-
-/* スマホ: 行をカードにする */
-@media (max-width: 47.9375rem) {
-  .h-sort-mobile {
-    display: grid;
+@media (min-width: 768px) {
+  .hl {
+    display: none;
   }
 
   .h-table-wrap {
-    background: none;
-    border: 0;
-  }
-
-  .h-table,
-  .h-table tbody,
-  .h-table tr,
-  .h-table th,
-  .h-table td {
     display: block;
   }
 
-  .h-table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .h-table tr {
-    margin-bottom: 0.75rem;
-    padding: 0.75rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-
-  .h-table th,
-  .h-table td {
-    padding: 0.25rem 0;
-    border: 0;
-  }
-
-  .h-table tbody th.h-name {
-    margin-bottom: 0.25rem;
-    font-size: 1rem;
-  }
-
-  .h-table td {
+  .h-tools {
     display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
   }
 
-  .h-table td::before {
-    content: attr(data-label);
-    flex: none;
-    color: var(--text-muted);
+  .h-filters {
+    display: flex;
+    flex: 1 1 32rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-  .h-table .h-num {
-    text-align: right;
+  .h-search {
+    flex: 0 1 18rem;
+  }
+
+  .h-chips {
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0.25rem 0;
+    overflow: visible;
+  }
+
+  .h-sumline {
+    flex: 1 1 100%;
+    margin-top: 0;
   }
 }

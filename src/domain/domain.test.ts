@@ -119,7 +119,9 @@ describe('buildTree', () => {
     const a = t.nodes[0];
     expect(a?.value).toBe(500);
     expect(a?.children?.map((c) => c.name)).toEqual(['特定口座', 'NISA口座']);
-    expect(a?.children?.[0]?.children).toEqual([{ name: 'サンプル米国株C', value: 300 }]);
+    expect(a?.children?.[0]?.children).toEqual([
+      { name: 'サンプル米国株C', value: 300, id: '証券会社A|特定口座|サンプル米国株C', assetClass: '米国株' },
+    ]);
   });
   it('正の信用損益は載る', () => {
     const t = buildTree(data, '2024-01-31');

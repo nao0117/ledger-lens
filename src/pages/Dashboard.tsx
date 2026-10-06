@@ -1,52 +1,54 @@
 import { useMemo } from 'react';
-import { composition, summarize } from '../domain/index.ts';
-import { ChangeCard } from '../components/dashboard/ChangeCard.tsx';
-import { DonutCard } from '../components/dashboard/DonutCard.tsx';
-import { buildSlices } from '../components/dashboard/slices.ts';
-import { Money } from '../components/Money.tsx';
+import { buildHoldingRows, composition, previousDate, summarize } from '../domain/index.ts';
+import { AllocationCard } from '../components/dashboard/AllocationCard.tsx';
+import { buildAllocation, cashStockRatio } from '../components/dashboard/allocation.ts';
+import { CheckCard } from '../components/dashboard/CheckCard.tsx';
+import { MoversCard } from '../components/dashboard/MoversCard.tsx';
+import { topMovers } from '../components/dashboard/movers.ts';
+import { SummaryCard } from '../components/dashboard/SummaryCard.tsx';
+import { assetClassColor } from '../components/colors.ts';
+import TrendSection from '../components/trend/TrendSection.tsx';
 import { useData } from '../state/data.tsx';
 import './Dashboard.css';
 
+const MOVERS_COUNT = 5;
+
+/** ホーム（サマリーファースト）。すべて基準日時点の値で、推移も基準日を終点にする。 */
 export default function Dashboard() {
   const { data, baseDate } = useData();
   const summary = useMemo(() => (baseDate === null ? null : summarize(data, baseDate)), [data, baseDate]);
-  const classSlices = useMemo(
-    () => (baseDate === null ? [] : buildSlices(composition(data, 'assetClass', baseDate).map((c) => ({ key: c.key, value: c.value })))),
+  const allocation = useMemo(
+    () => (baseDate === null ? [] : buildAllocation(composition(data, 'assetClass', baseDate))),
     [data, baseDate],
   );
+  const rows = useMemo(() => (baseDate === null ? [] : buildHoldingRows(data, baseDate)), [data, baseDate]);
+  const movers = useMemo(() => topMovers(rows, MOVERS_COUNT), [rows]);
+  const unclassifiedCount = useMemo(() => rows.filter((r) => r.unclassified).length, [rows]);
 
-  if (summary === null) {
+  if (summary === null || baseDate === null) {
     return (
-      <section>
-        <h2>ダッシュボード</h2>
+      <section className="home">
+        <h2 className="sr-only">ホーム</h2>
         <p className="note">表示できるデータがありません</p>
       </section>
     );
   }
 
-  const { totals } = summary;
-  const cashStock = buildSlices([
-    { key: '現金', value: totals.cash },
-    { key: '株式', value: totals.stock },
-  ].sort((a, b) => b.value - a.value));
+  // 資産クラスの色は配分の並び順で決め、今月の動きの印と揃える
+  const colors = new Map(allocation.map((a, i) => [a.key, assetClassColor(a.key, i)]));
+  const colorOf = (assetClass: string) => colors.get(assetClass) ?? assetClassColor(assetClass);
+  const { cash, stock } = summary.totals;
+  const cashStock = cashStockRatio(cash, stock);
+  const sortedDates = [...data.dates].sort();
 
   return (
-    <section className="dash">
-      <h2>ダッシュボード</h2>
-      <div className="card dash-total">
-        <h3 className="dash-card-title">総資産（{summary.date}）</h3>
-        <p className="dash-total-value">
-          <Money value={totals.total} />
-        </p>
-      </div>
-      <div className="dash-grid">
-        <ChangeCard title="前回比" change={summary.vsPrevious} />
-        <ChangeCard title="前年同時期比" change={summary.vsYearAgo} />
-      </div>
-      <div className="dash-grid">
-        <DonutCard title={"現金と株式の比率"} slices={cashStock} />
-        <DonutCard title="資産クラス別の比率" slices={classSlices} />
-      </div>
+    <section className="home">
+      <h2 className="sr-only">ホーム</h2>
+      <SummaryCard summary={summary} cashStock={cashStock} />
+      <TrendSection data={data} endDate={baseDate} />
+      <MoversCard movers={movers} previousDate={previousDate(sortedDates, baseDate)} colorOf={colorOf} />
+      <AllocationCard items={allocation} cash={cash} stock={stock} cashStock={cashStock} colorOf={colorOf} />
+      <CheckCard unclassifiedCount={unclassifiedCount} warnings={data.warnings} />
     </section>
   );
 }

@@ -1,90 +1,171 @@
-import { useState } from 'react';
-import { ResponsiveContainer, Treemap, type TreemapNode } from 'recharts';
-import { useMoney } from '../Money.tsx';
-import { fitLabel, ratioText, SHADE_COUNT, type CellNode } from './chartData.ts';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { UNCLASSIFIED } from '../../parser/index.ts';
+import { assetClassColor } from '../colors.ts';
+import { cellKey, fitLabel, isUnclassified, legendClasses, ratioText, truncateToWidth, type CellNode } from './chartData.ts';
+import { ACCOUNT_LABEL_H, HEADER_H, layoutTreemap } from './layout.ts';
 
-const COLOR_COUNT = 8;
-const SHADE_OPACITY = [0.95, 0.75, 0.55];
+type Size = { width: number; height: number };
 
-function colorVar(index: number): string {
-  return index < COLOR_COUNT ? `var(--cmp-${index + 1})` : 'var(--cmp-other)';
+/** 要素の大きさを ResizeObserver で測る。 */
+function useSize<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [size, setSize] = useState<Size>({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      setSize((s) => (s.width === r.width && s.height === r.height ? s : { width: r.width, height: r.height }));
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, size] as const;
 }
 
-/** ホバー・タップ・フォーカスで選んだセルの説明欄（ツールチップ代わり）。マスク ON では金額を出さない。 */
-function Detail({ cell }: { cell: CellNode | null }) {
-  const { mask, yen } = useMoney();
-  return (
-    <p className="cmp-detail" aria-live="polite">
-      {cell === null ? (
-        'セルにカーソルを合わせる（タップする）と、詳細を表示します。'
-      ) : (
-        <>
-          <strong>{cell.path.join(' › ')}</strong>
-          {' '}
-          構成比 {ratioText(cell.ratio, 1)}
-          {mask ? null : <> ／ {yen(cell.value)}</>}
-        </>
-      )}
-    </p>
+type Props = {
+  nodes: CellNode[];
+  /** 選択中のセルのキー（cellKey） */
+  selectedKey: string | null;
+  onSelect: (cell: CellNode) => void;
+};
+
+/** 証券会社 → 口座区分 → 銘柄 のツリーマップ。銘柄セルは資産クラス色。 */
+export default function CompositionTree({ nodes, selectedKey, onSelect }: Props) {
+  const [ref, size] = useSize<HTMLDivElement>();
+  const patternId = `cmp-unc-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const layout = useMemo(
+    () => layoutTreemap(nodes, { x: 0, y: 0, width: size.width, height: size.height }),
+    [nodes, size.width, size.height],
   );
-}
+  const classes = useMemo(() => legendClasses(nodes), [nodes]);
+  const fillOf = (cell: CellNode) =>
+    isUnclassified(cell) ? `url(#${patternId})` : assetClassColor(cell.assetClass ?? '', classes.indexOf(cell.assetClass ?? ''));
+  const selected = layout.leaves.find((l) => cellKey(l.node) === selectedKey) ?? null;
 
-export default function CompositionTree({ nodes }: { nodes: CellNode[] }) {
-  const [active, setActive] = useState<CellNode | null>(null);
-
-  const renderCell = (props: TreemapNode) => {
-    const { x, y, width, height, depth, name } = props;
-    if (depth !== 3) return <g />; // 面積の見え方は銘柄（葉）で決まる。親は枠だけ別に描かない
-    const cell = props as unknown as CellNode & TreemapNode;
-    const label = fitLabel(width, height, name);
-    const fill = colorVar(cell.colorIndex);
-    const opacity = SHADE_OPACITY[cell.shade % SHADE_COUNT] ?? 0.75;
-    return (
-      <g
-        tabIndex={0}
-        role="img"
-        aria-label={`${cell.path.join('、')}、構成比 ${ratioText(cell.ratio, 1)}`}
-        onMouseEnter={() => setActive(cell)}
-        onFocus={() => setActive(cell)}
-        onClick={() => setActive(cell)}
-        className="cmp-cell"
-      >
-        <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={opacity} className="cmp-rect" />
-        {label && (
-          <text x={x + 4} y={y + 16} className="cmp-label">
-            {label.name}
-            {label.showRatio && (
-              <tspan x={x + 4} dy={15} className="cmp-label-sub">
-                {ratioText(cell.ratio, 1)}
-              </tspan>
-            )}
-          </text>
-        )}
-      </g>
-    );
+  const onKeyDown = (e: KeyboardEvent, cell: CellNode) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(cell);
+    }
   };
 
-  const brokers = nodes.map((n) => n);
   return (
     <div>
-      <Detail cell={active} />
-      <div className="cmp-chart">
-        <ResponsiveContainer width="100%" height="100%">
-          <Treemap
-            data={nodes}
-            dataKey="value"
-            nameKey="name"
-            content={renderCell}
-            isAnimationActive={false}
-            aspectRatio={1}
-          />
-        </ResponsiveContainer>
+      <div ref={ref} className="cmp-chart">
+        {size.width > 0 && size.height > 0 && (
+          <svg
+            width={size.width}
+            height={size.height}
+            className={selected ? 'cmp-svg cmp-has-sel' : 'cmp-svg'}
+            role="group"
+            aria-label="構成のツリーマップ（面積は評価額）"
+          >
+            <defs>
+              <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" className="cmp-unc-bg" />
+                <line x1="0" y1="0" x2="0" y2="6" className="cmp-unc-line" />
+              </pattern>
+            </defs>
+
+            {layout.brokers.map(({ node, rect, header }) => {
+              const ratio = ratioText(node.ratio, 1);
+              const ratioW = ratio.length * 7 + 6;
+              const name = header ? truncateToWidth(node.name, rect.width - 12 - ratioW) : null;
+              return (
+                <g key={cellKey(node)} aria-hidden="true">
+                  <rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={6} className="cmp-broker" />
+                  {header && (
+                    <>
+                      {name !== null && (
+                        <text x={rect.x + 6} y={rect.y + HEADER_H - 6} className="cmp-broker-name">{name}</text>
+                      )}
+                      <text x={rect.x + rect.width - 6} y={rect.y + HEADER_H - 6} textAnchor="end" className="cmp-broker-ratio">
+                        {ratio}
+                      </text>
+                    </>
+                  )}
+                </g>
+              );
+            })}
+
+            {layout.accounts.map(({ node, rect, label }) => {
+              const name = label ? truncateToWidth(node.name, rect.width - 6, 10) : null;
+              return (
+                <g key={cellKey(node)} aria-hidden="true">
+                  <rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={3} className="cmp-account" />
+                  {name !== null && (
+                    <text x={rect.x + 3} y={rect.y + ACCOUNT_LABEL_H - 4} className="cmp-account-name">{name}</text>
+                  )}
+                </g>
+              );
+            })}
+
+            {layout.leaves.map(({ node, rect }) => {
+              const key = cellKey(node);
+              const isSel = key === selectedKey;
+              const label = fitLabel(rect.width, rect.height, node.name);
+              const ratio = ratioText(node.ratio, 1);
+              const unc = isUnclassified(node);
+              return (
+                <g
+                  key={key}
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={isSel}
+                  aria-label={`${node.path.join('、')}、構成比 ${ratio}${unc ? `、${UNCLASSIFIED}` : ''}`}
+                  className={isSel ? 'cmp-cell is-sel' : 'cmp-cell'}
+                  onClick={() => onSelect(node)}
+                  onFocus={() => onSelect(node)}
+                  onKeyDown={(e) => onKeyDown(e, node)}
+                >
+                  <rect
+                    x={rect.x}
+                    y={rect.y}
+                    width={rect.width}
+                    height={rect.height}
+                    rx={3}
+                    className="cmp-rect"
+                    style={{ fill: fillOf(node) }}
+                  />
+                  {label && (
+                    <text x={rect.x + 4} y={rect.y + 15} className={unc ? 'cmp-label cmp-label-unc' : 'cmp-label'}>
+                      {label.name}
+                      {label.showRatio && (
+                        <tspan x={rect.x + 4} dy={15} className="cmp-label-sub">{ratio}</tspan>
+                      )}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {selected && (
+              <rect
+                x={selected.rect.x + 1}
+                y={selected.rect.y + 1}
+                width={Math.max(0, selected.rect.width - 2)}
+                height={Math.max(0, selected.rect.height - 2)}
+                rx={3}
+                className="cmp-sel-ring"
+                aria-hidden="true"
+              />
+            )}
+          </svg>
+        )}
       </div>
-      <ul className="cmp-legend" aria-label="証券会社の凡例">
-        {brokers.map((b) => (
-          <li key={b.name}>
-            <span className="cmp-swatch" style={{ background: colorVar(b.colorIndex) }} aria-hidden="true" />
-            {b.name} {ratioText(b.ratio, 1)}
+      <ul className="cmp-legend" aria-label="資産クラスの凡例">
+        {classes.map((c, i) => (
+          <li key={c}>
+            <span
+              className={c === UNCLASSIFIED ? 'cmp-swatch cmp-swatch-unc' : 'cmp-swatch'}
+              style={c === UNCLASSIFIED ? undefined : { background: assetClassColor(c, i) }}
+              aria-hidden="true"
+            />
+            {c}
           </li>
         ))}
       </ul>

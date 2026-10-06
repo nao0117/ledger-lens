@@ -1,4 +1,4 @@
-import { createAutoLock, type AutoLock } from './autoLock.ts';
+import { createAutoLock, type AutoLock, type LockReason } from './autoLock.ts';
 import { revokeAccessToken } from './token.ts';
 
 /**
@@ -13,10 +13,12 @@ export async function signOut(discard: () => void): Promise<void> {
   }
 }
 
-/** 自動ロック（F-08）。無操作で revoke → discard の順に実行する。 */
-export function startAutoLock(discard: () => void, timeoutMs?: number): AutoLock {
+export type StartAutoLockOptions = { timeoutMs?: number; warnBeforeMs?: number };
+
+/** 自動ロック（F-08）。無操作（または lockNow）で revoke → discard の順に実行する。 */
+export function startAutoLock(discard: (reason: LockReason) => void, options: StartAutoLockOptions = {}): AutoLock {
   return createAutoLock({
-    timeoutMs,
-    onLock: () => signOut(discard),
+    ...options,
+    onLock: (reason) => signOut(() => discard(reason)),
   });
 }

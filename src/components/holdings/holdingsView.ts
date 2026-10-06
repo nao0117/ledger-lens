@@ -119,3 +119,70 @@ export function formatPercent(ratio: number, signed = false): string {
   if (Number(s) === 0) return `${s}%`;
   return `${v < 0 ? '-' : '+'}${s}%`;
 }
+
+/** 並べ替えキーの表示名（並べ替えチップ・表の見出し共通）。 */
+export const SORT_LABELS: Readonly<Record<SortKey, string>> = {
+  name: '銘柄名',
+  broker: '証券会社',
+  account: '口座区分',
+  assetClass: '資産クラス',
+  value: '評価額',
+  ratio: '構成比',
+  changeAmount: '前回比（金額）',
+  changePercent: '前回比（%）',
+};
+
+/** 並べ替えの向きの矢印。 */
+export function sortArrow(dir: SortDir): string {
+  return dir === 'asc' ? '↑' : '↓';
+}
+
+/** 並べ替えチップの文言（例: `評価額 ↓`）。 */
+export function sortLabel(sort: Sort): string {
+  return `${SORT_LABELS[sort.key]} ${sortArrow(sort.dir)}`;
+}
+
+/** 選択式の絞り込みチップの文言。未選択は項目名、選択中は選んだ値。 */
+export function filterChipLabel(label: string, value: string): string {
+  return value === '' ? label : value;
+}
+
+/** 絞り込み条件が1つでもあるか（検索は前後の空白を無視）。 */
+export function hasActiveFilters(f: Filters): boolean {
+  return f.broker !== '' || f.account !== '' || f.assetClass !== '' || f.unclassifiedOnly || f.query.trim() !== '';
+}
+
+/** 件数の文言。絞り込み中は `3 / 8銘柄`、それ以外は `8銘柄`。 */
+export function countLabel(visible: number, all: number, filtered: boolean): string {
+  return filtered ? `${visible} / ${all}銘柄` : `${all}銘柄`;
+}
+
+/** 表示中の行の評価額の合計（信用は損益をそのまま足す）。 */
+export function sumValues(rows: readonly HoldingRow[]): number {
+  return rows.reduce((a, r) => a + r.value, 0);
+}
+
+/** `2026-09-30` → `2026年9月30日`。形式が違えばそのまま返す。 */
+export function formatJpDate(date: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  return m ? `${m[1]}年${Number(m[2])}月${Number(m[3])}日` : date;
+}
+
+export type ChangeDisplay = { kind: ChangeKind | 'new'; symbol: string; text: string };
+
+const SYMBOL: Readonly<Record<ChangeKind, string>> = { up: '▲', down: '▼', flat: '±', none: '' };
+
+/**
+ * 一覧の2行目に出す前回比（row.change.percent は % 値。0.1234 ではなく 12.34）（例: `+¥48,000（+2.3%）`）。
+ * yen はマスク込みの金額整形。前回なしは `―`、新規は `新規`、増減なしは `変化なし`。
+ */
+export function changeDisplay(row: HoldingRow, yen: (v: number) => string, mask: boolean): ChangeDisplay {
+  const kind = changeKind(row);
+  if (!row.change || kind === 'none') return { kind: 'none', symbol: '', text: '―' };
+  if (isNewHolding(row)) return { kind: 'new', symbol: '', text: '新規' };
+  if (kind === 'flat') return { kind, symbol: SYMBOL.flat, text: '変化なし' };
+  const amount = row.change.amount;
+  const money = mask ? yen(amount) : `${amount > 0 ? '+' : ''}${yen(amount)}`;
+  const pct = row.change.percent === null ? '' : `（${formatPercent(row.change.percent / 100, true)}）`;
+  return { kind, symbol: SYMBOL[kind], text: `${money}${pct}` };
+}

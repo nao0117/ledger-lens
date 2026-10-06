@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildHoldingRows } from '../../domain/index.ts';
 import { makeData } from '../../domain/fixtures/sampleData.ts';
 import {
-  changeKind, DEFAULT_SORT, EMPTY_FILTERS, filterOptions, filterRows, formatPercent, isNewHolding, nextSort, sortRows,
+  changeDisplay, changeKind, countLabel, DEFAULT_SORT, EMPTY_FILTERS, filterChipLabel, filterOptions, filterRows,
+  formatJpDate, formatPercent, hasActiveFilters, isNewHolding, nextSort, sortLabel, sortRows, sumValues,
 } from './holdingsView.ts';
 
 const rows = buildHoldingRows(makeData());
@@ -92,5 +93,64 @@ describe('表示判定', () => {
     expect(formatPercent(0.1234, true)).toBe('+12.3%');
     expect(formatPercent(-0.05, true)).toBe('-5.0%');
     expect(formatPercent(0, true)).toBe('0.0%');
+  });
+});
+
+describe('絞り込み・並べ替えの表示文言', () => {
+  it('sortLabel', () => {
+    expect(sortLabel(DEFAULT_SORT)).toBe('評価額 ↓');
+    expect(sortLabel({ key: 'name', dir: 'asc' })).toBe('銘柄名 ↑');
+  });
+  it('filterChipLabel は未選択なら項目名、選択中は値', () => {
+    expect(filterChipLabel('証券会社', '')).toBe('証券会社');
+    expect(filterChipLabel('証券会社', '証券会社A')).toBe('証券会社A');
+  });
+  it('hasActiveFilters', () => {
+    expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, query: '   ' })).toBe(false);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, query: '投信' })).toBe(true);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, account: 'NISA口座' })).toBe(true);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, unclassifiedOnly: true })).toBe(true);
+  });
+  it('countLabel と sumValues', () => {
+    expect(countLabel(5, 5, false)).toBe('5銘柄');
+    expect(countLabel(2, 5, true)).toBe('2 / 5銘柄');
+    expect(countLabel(5, 5, true)).toBe('5 / 5銘柄');
+    // 最新日: 130 + 250 + 360 + 30 + 70
+    expect(sumValues(rows)).toBe(840);
+    expect(sumValues([])).toBe(0);
+  });
+  it('formatJpDate', () => {
+    expect(formatJpDate('2026-09-30')).toBe('2026年9月30日');
+    expect(formatJpDate('不明')).toBe('不明');
+  });
+});
+
+describe('changeDisplay', () => {
+  const yen = (v: number) => `${v < 0 ? '-' : ''}¥${Math.abs(v)}`;
+  const find = (r: typeof rows, name: string) => r.find((x) => x.name === name)!;
+  it('増加は符号つきの金額と %', () => {
+    // 口座預金 120 → 130
+    expect(changeDisplay(find(rows, '口座預金'), yen, false)).toEqual({ kind: 'up', symbol: '▲', text: '+¥10（+8.3%）' });
+  });
+  it('減少', () => {
+    // 2023-12-31: 米国株C 330 → 0
+    const r = buildHoldingRows(makeData(), '2023-12-31');
+    expect(changeDisplay(find(r, 'サンプル米国株C'), yen, false)).toEqual({ kind: 'down', symbol: '▼', text: '-¥330（-100.0%）' });
+  });
+  it('新規・前回なし・変化なし', () => {
+    expect(changeDisplay(find(rows, 'サンプル米国株C'), yen, false)).toEqual({ kind: 'new', symbol: '', text: '新規' });
+    const first = buildHoldingRows(makeData(), '2022-01-31')[0]!;
+    expect(changeDisplay(first, yen, false)).toEqual({ kind: 'none', symbol: '', text: '―' });
+    const flat = buildHoldingRows(makeData({ '2024-01-31': [5, 5, 5, 5, 5], '2024-02-29': [5, 6, 5, 5, 5] }));
+    expect(changeDisplay(find(flat, '口座預金'), yen, false)).toEqual({ kind: 'flat', symbol: '±', text: '変化なし' });
+  });
+  it('前回が負（信用の損益）のときは絶対値に対する %', () => {
+    // 信用 -10 → 30
+    expect(changeDisplay(find(rows, 'サンプル信用D'), yen, false).text).toBe('+¥40（+400.0%）');
+  });
+  it('マスク時は金額に符号を付けない（整形関数の伏せ字のまま）', () => {
+    const masked = () => '¥***,***';
+    expect(changeDisplay(find(rows, '口座預金'), masked, true).text).toBe('¥***,***（+8.3%）');
   });
 });

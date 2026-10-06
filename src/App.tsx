@@ -1,13 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAccessToken, signIn, signOut, startAutoLock, type AutoLock } from './auth/index.ts';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DEFAULT_IDLE_MS,
+  DEFAULT_WARN_BEFORE_MS,
+  getAccessToken,
+  signIn,
+  signOut,
+  startAutoLock,
+  type AutoLock,
+  type LockReason,
+} from './auth/index.ts';
 import { Layout } from './components/Layout.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
-import { WarningsBanner } from './components/WarningsBanner.tsx';
 import { buildParsedData } from './loadData.ts';
 import Composition from './pages/Composition.tsx';
 import Dashboard from './pages/Dashboard.tsx';
 import Holdings from './pages/Holdings.tsx';
-import Trend from './pages/Trend.tsx';
 import type { ParsedAnnual } from './parser/index.ts';
 import { useRoute } from './router.ts';
 import { ANNUAL_SHEET_TITLE, MASTER_SHEET_TITLE, clearSpreadsheetId, fetchSheetGrids, loadSpreadsheetId, pickSpreadsheet, SheetsApiError } from './sheets/index.ts';
@@ -16,8 +23,6 @@ import { PrefsProvider } from './state/prefs.tsx';
 
 function Page() {
   switch (useRoute()) {
-    case '/trend':
-      return <Trend />;
     case '/composition':
       return <Composition />;
     case '/holdings':
@@ -28,6 +33,11 @@ function Page() {
 }
 
 const CONFIGURED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
+const LOCK_MESSAGES: Record<LockReason, string> = {
+  idle: 'しばらく操作がなかったため、ロックしました。データとログイン情報は破棄済みです。',
+  manual: 'ロックしました。データとログイン情報は破棄済みです。',
+};
 
 function errorMessage(e: unknown): string {
   if (e instanceof SheetsApiError) {
@@ -46,6 +56,9 @@ export default function App() {
   const [data, setData] = useState<ParsedAnnual | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ロック後にログイン画面で出す案内（エラーではない）
+  const [lockNotice, setLockNotice] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const lockRef = useRef<AutoLock | null>(null);
   const [isDemo, setIsDemo] = useState(false);
 
@@ -54,16 +67,19 @@ export default function App() {
     lockRef.current = null;
     setIsDemo(false);
     setData(null);
+    setLastFetchedAt(null);
   }, []);
 
   const loadFrom = useCallback(async (token: string, id: string) => {
     const grids = await fetchSheetGrids(token, id);
     setData(buildParsedData(grids.annual, grids.master));
+    setLastFetchedAt(new Date());
   }, []);
 
   const login = useCallback(async () => {
     setBusy(true);
     setError(null);
+    setLockNotice(null);
     try {
       await signIn();
       const token = getAccessToken();
@@ -92,7 +108,9 @@ export default function App() {
     ? async () => {
         const { makeData } = await import('./domain/fixtures/sampleData.ts');
         setIsDemo(true);
+        setLockNotice(null);
         setData(makeData());
+        setLastFetchedAt(new Date());
       }
     : undefined;
 
@@ -123,22 +141,51 @@ export default function App() {
   const loggedIn = data !== null;
   useEffect(() => {
     if (!loggedIn) return;
-    const lock = startAutoLock(() => {
-      discard();
-      setError('しばらく操作がなかったため、ロックしました。');
-    });
+    const lock = startAutoLock(
+      (reason) => {
+        discard();
+        setLockNotice(LOCK_MESSAGES[reason]);
+      },
+      { timeoutMs: DEFAULT_IDLE_MS, warnBeforeMs: DEFAULT_WARN_BEFORE_MS },
+    );
     lockRef.current = lock;
     return () => lock.stop();
   }, [loggedIn, discard]);
 
+  // Layout に渡す自動ロックの窓口。実体は effect の中で作るので ref 経由で読む（残り時間の表示で App を再描画しない）
+  const autoLock = useMemo<AutoLock>(
+    () => ({
+      timeoutMs: DEFAULT_IDLE_MS,
+      warnBeforeMs: DEFAULT_WARN_BEFORE_MS,
+      touch: () => lockRef.current?.touch(),
+      // 開始前は満タン扱い（ロック後は Layout ごと消える）
+      remainingMs: () => lockRef.current?.remainingMs() ?? DEFAULT_IDLE_MS,
+      lockNow: () => lockRef.current?.lockNow(),
+      stop: () => lockRef.current?.stop(),
+    }),
+    [],
+  );
+
   return (
     <PrefsProvider>
       {data === null ? (
-        <LoginScreen busy={busy} error={error} configured={CONFIGURED} onLogin={() => void login()} onDemo={demo && (() => void demo())} />
+        <LoginScreen
+          busy={busy}
+          error={error}
+          lockNotice={lockNotice}
+          configured={CONFIGURED}
+          onLogin={() => void login()}
+          onDemo={demo && (() => void demo())}
+        />
       ) : (
         <DataProvider data={data}>
-          <Layout onReload={isDemo ? undefined : () => void reload()} onLogout={logout}>
-            <WarningsBanner warnings={data.warnings} />
+          <Layout
+            onReload={isDemo ? undefined : () => void reload()}
+            onLogout={logout}
+            busy={busy}
+            lastFetchedAt={lastFetchedAt}
+            autoLock={autoLock}
+          >
             <Page />
           </Layout>
         </DataProvider>

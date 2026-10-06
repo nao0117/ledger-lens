@@ -1,38 +1,6 @@
 :root {
-  --bg: #f7f7f8;
-  --surface: #ffffff;
-  --text: #1c1c1e;
-  --text-muted: #5f6368;
-  --border: #e0e0e3;
-  --accent: #2f6fde;
-
-  color-scheme: light;
-  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  font-family: var(--font);
   line-height: 1.6;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #121214;
-    --surface: #1c1c1f;
-    --text: #ececef;
-    --text-muted: #a0a0a8;
-    --border: #2e2e33;
-    --accent: #7aa7ff;
-
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: #121214;
-  --surface: #1c1c1f;
-  --text: #ececef;
-  --text-muted: #a0a0a8;
-  --border: #2e2e33;
-  --accent: #7aa7ff;
-
-  color-scheme: dark;
 }
 
 *,
@@ -63,75 +31,687 @@ body {
   font-size: 0.875rem;
 }
 
-/* 共通レイアウト */
-.app-header {
+/* 共通レイアウト（スマホ優先。PC は 1024px 以上） */
+:root {
+  --header-h: 52px;
+  --tabbar-h: 56px;
+  /* 画面下部に固定するもの（タブバー）の高さ。下部に置くパネルは bottom: var(--bottom-bar-h) にする */
+  --bottom-bar-h: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  --side-w: 220px;
+  --main-max: 1200px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --bottom-bar-h: 0px;
+  }
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.app-side,
+.pc-toolbar,
+.pc-maskband {
+  display: none;
+}
+
+.app-body {
+  min-width: 0;
+}
+
+/* スマホ: 1行ヘッダー */
+.m-top {
   position: sticky;
   top: 0;
-  z-index: 10;
-  padding: 0.5rem 1rem 0;
+  z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
   background: var(--surface);
+}
+
+.m-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--header-h);
+  padding: 0 4px 0 16px;
   border-bottom: 1px solid var(--border);
 }
 
-.app-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.125rem;
+.m-brand {
+  margin: 0 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: flex-end;
+.spacer {
+  flex: 1;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.75rem;
+button.icon-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  min-height: 0;
+  padding: 0;
   color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
 }
 
-button,
-select {
-  min-height: 2.25rem;
-  padding: 0 0.75rem;
-  font: inherit;
+button.icon-btn[aria-pressed='true'] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* 基準日チップ: ネイティブ select を装飾。見た目は 32px、タップ領域は 44px */
+.date-chip,
+.date-field-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.date-chip svg,
+.date-field-select svg {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.date-chip select {
+  height: var(--tap);
+  min-height: 0;
+  padding: 0 28px 0 16px;
+  font-family: var(--font-num);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  appearance: none;
+  background: var(--surface-2) padding-box;
+  border: 6px solid transparent;
+  border-radius: 22px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
 }
 
-button[aria-pressed='true'] {
-  border-color: var(--accent);
+.date-chip select:focus-visible {
+  outline-offset: -4px;
+}
+
+/* マスク中の帯 */
+.mask-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 4px 2px 16px;
+  font-size: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-bottom: 1px solid var(--border);
+}
+
+.mask-band svg {
+  flex: none;
   color: var(--accent);
 }
 
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-  overflow-x: auto;
+button.link-btn {
+  min-height: var(--tap);
+  margin: -8px 0 -8px auto;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
 }
 
-.tabs a {
-  flex: 0 0 auto;
-  padding: 0.5rem 0.75rem;
+/* スマホ: 下部タブバー */
+.tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  height: var(--bottom-bar-h);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.tabbar a {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  font-size: 11px;
   color: var(--text-muted);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
 }
 
-.tabs a[aria-current='page'] {
+.tabbar a[aria-current='page'] {
+  font-weight: 700;
   color: var(--accent);
-  border-bottom-color: var(--accent);
 }
 
 .app-main {
-  max-width: 64rem;
+  width: 100%;
+  max-width: var(--main-max);
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1rem 1rem calc(var(--bottom-bar-h) + 1rem);
+}
+
+/* ︙メニュー（ボトムシート） */
+dialog.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100dvh - 48px);
+  margin: auto auto 0;
+  padding: 0;
+  overflow-y: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+}
+
+dialog.sheet::backdrop {
+  background: var(--scrim);
+}
+
+.sheet-body {
+  padding: 8px 8px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.sheet-grab {
+  width: 36px;
+  height: 4px;
+  margin: 2px auto 8px;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.sheet-body hr {
+  margin: 4px 8px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.menu-item {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 12px;
+  text-align: left;
+}
+
+button.menu-item {
+  font-size: 15px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+}
+
+.menu-item > svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.btn-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.btn-text small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.menu-note {
+  margin: 2px 12px 8px 50px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* セグメント（テーマ） */
+.seg {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.seg button {
+  min-width: 48px;
+  min-height: 38px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.seg button[aria-pressed='true'] {
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+/* 読み込み中のスピナー */
+.spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* ログアウトの確認 */
+button.logout-btn {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+button.logout-btn.menu-item {
+  gap: 14px;
+  color: var(--text);
+}
+
+.logout-confirm {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.logout-confirm p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.logout-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.logout-confirm-actions button {
+  flex: 1;
+  min-height: var(--tap);
+}
+
+button.danger {
+  color: var(--accent-fg);
+  background: var(--down);
+  border-color: var(--down);
+}
+
+/* 自動ロックの残り時間バー */
+.lock-bar {
+  display: block;
+  flex-basis: 100%;
+  height: 3px;
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.lock-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 1s linear;
+}
+
+/* 自動ロックの予告 */
+.lock-warning {
+  position: fixed;
+  right: 8px;
+  bottom: calc(var(--bottom-bar-h) + 8px);
+  left: 8px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--warn-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px var(--scrim);
+}
+
+.lock-warning-text {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.lock-warning-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warn-fg);
+}
+
+.lock-warning-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.lock-warning-desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.lock-warning-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lock-warning-actions button {
+  flex: 1;
+  min-height: var(--tap);
+}
+
+/* ロック後のログイン画面の案内 */
+.lock-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.lock-notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.lock-notice p {
+  margin: 0;
+}
+
+/* PC: 左サイドバー＋メイン上部ツールバー */
+@media (min-width: 1024px) {
+  .app {
+    display: grid;
+    grid-template-columns: var(--side-w) minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  .m-top,
+  .tabbar {
+    display: none;
+  }
+
+  .app-side {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 100vh;
+    padding: 14px 10px;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .side-logo {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 2px 8px 14px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .logo-mark {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    color: var(--accent-fg);
+    background: var(--accent);
+    border-radius: 6px;
+  }
+
+  .side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .side-nav a {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 10px;
+    font-size: 14px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 8px;
+  }
+
+  .side-nav a:hover {
+    background: var(--surface-2);
+  }
+
+  .side-nav a[aria-current='page'] {
+    font-weight: 600;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  .side-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+  }
+
+  .side-status {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+  }
+
+  .status-row {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  button.side-btn {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    margin-top: 2px;
+    font-size: 12px;
+  }
+
+  .side-btn .btn-text {
+    flex: none;
+  }
+
+  .side-memo {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin: 0;
+    padding: 0 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+
+  .side-memo svg {
+    flex: none;
+    margin-top: 1px;
+  }
+
+  .app-side .seg {
+    display: flex;
+  }
+
+  .app-side .seg button {
+    flex: 1;
+    min-width: 0;
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  button.side-logout {
+    justify-content: center;
+    min-height: 36px;
+    padding-top: 8px;
+    font-size: 13px;
+  }
+
+  .logout-confirm.side-logout {
+    display: flex;
+    padding: 8px 0 0;
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+
+  .side-logout .logout-confirm-actions button {
+    min-height: 36px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .pc-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    max-width: var(--main-max);
+    margin: 0 auto;
+    padding: 10px 1rem;
+    background: var(--bg);
+  }
+
+  .pc-maskband {
+    display: block;
+    max-width: var(--main-max);
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .pc-maskband .mask-band {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .date-field {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    height: 36px;
+    padding-left: 10px;
+    font-size: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .date-field select {
+    height: 34px;
+    min-height: 0;
+    padding: 0 30px 0 2px;
+    font-family: var(--font-num);
+    font-size: 13px;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .date-field-select svg {
+    right: 10px;
+  }
+
+  button.mask-toggle-text {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    min-height: 36px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
+  .app-main {
+    padding: 0.5rem 1rem 2rem;
+  }
+
+  .lock-warning {
+    right: 20px;
+    bottom: 20px;
+    left: auto;
+    width: 400px;
+  }
 }
 
 .card {
@@ -150,7 +730,7 @@ button[aria-pressed='true'] {
 }
 
 button.primary {
-  color: #fff;
+  color: var(--accent-fg);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -171,4 +751,14 @@ button:disabled {
 .warnings ul {
   padding-left: 1.25rem;
   margin: 0.5rem 0 0;
+}
+
+/* 画面には出さず、スクリーンリーダーには読ませる */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
