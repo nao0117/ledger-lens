@@ -72,3 +72,36 @@ export function layoutTreemap(nodes: CellNode[], rect: Rect): TreemapLayout {
   });
   return { brokers, accounts, leaves };
 }
+
+export type GroupedLayout = { groups: BrokerBox[]; leaves: LeafBox[] };
+
+/**
+ * 2 階層（グループの見出し帯 → 葉）のレイアウト。資産クラス → 銘柄 に使う。
+ * グループの箱は layoutTreemap の証券会社の箱と同じ余白・見出し帯の規則。
+ */
+export function layoutGrouped(nodes: CellNode[], rect: Rect): GroupedLayout {
+  const groups: BrokerBox[] = [];
+  const leaves: LeafBox[] = [];
+  const groupRects = squarify(nodes.map((n) => n.value), rect);
+  nodes.forEach((group, gi) => {
+    const outer = inset(groupRects[gi] ?? rect, BROKER_GAP);
+    if (outer.width <= 0 || outer.height <= 0) return;
+    const header = fitsHeader(outer);
+    groups.push({ node: group, rect: outer, header });
+    const body: Rect = header
+      ? {
+          x: outer.x + BROKER_PAD,
+          y: outer.y + HEADER_H,
+          width: Math.max(0, outer.width - BROKER_PAD * 2),
+          height: Math.max(0, outer.height - HEADER_H - BROKER_PAD),
+        }
+      : inset(outer, BROKER_PAD);
+    const leafNodes = group.children ?? [];
+    const leafRects = squarify(leafNodes.map((n) => n.value), body);
+    leafNodes.forEach((leaf, li) => {
+      const lr = leafRects[li];
+      if (lr && lr.width > 0 && lr.height > 0) leaves.push({ node: leaf, rect: lr });
+    });
+  });
+  return { groups, leaves };
+}

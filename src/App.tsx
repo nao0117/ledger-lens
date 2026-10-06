@@ -106,10 +106,10 @@ export default function App() {
 
   const demo = import.meta.env.DEV
     ? async () => {
-        const { makeData } = await import('./domain/fixtures/sampleData.ts');
+        const { makeDemoData } = await import('./domain/fixtures/sampleData.ts');
         setIsDemo(true);
         setLockNotice(null);
-        setData(makeData());
+        setData(makeDemoData());
         setLastFetchedAt(new Date());
       }
     : undefined;

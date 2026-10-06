@@ -10,3 +10,6 @@ export { buildTree } from './tree.ts';
 export type { Tree, TreeNode } from './tree.ts';
 export { buildHoldingRows } from './holdingRows.ts';
 export type { HoldingRow } from './holdingRows.ts';
+export { groupBySecurity, securityKeyOf, isMargin, findClassConflicts } from './securities.ts';
+export type { SecurityRow } from './securities.ts';
+export { suggestSameSecurities, looksLikeSameSecurity } from './aliasSuggestions.ts';

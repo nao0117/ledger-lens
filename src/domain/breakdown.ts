@@ -1,6 +1,10 @@
-import type { Holding, ParsedAnnual } from '../parser/index.ts';
+import { CASH_BROKER, type Holding, type ParsedAnnual } from '../parser/index.ts';
+import { securityKeyOf } from './securities.ts';
 
-export type BreakdownKey = 'assetClass' | 'broker' | 'account';
+export type BreakdownKey = 'assetClass' | 'broker' | 'account' | 'security';
+
+/** 内訳 'security' での現金の系列名（口座預金・貯金を1つにまとめる） */
+export const CASH_SERIES_LABEL = '現金';
 
 export type BreakdownRow = {
   date: string;
@@ -25,8 +29,28 @@ export type CompositionItem = {
 
 type Src = Pick<ParsedAnnual, 'holdings' | 'snapshots' | 'dates'>;
 
+/**
+ * 行 id → グループ名。'security' は名寄せキーでまとめ、名前は最初の銘柄の表示名（正規化前）。
+ * 現金は1つの系列に、信用の行は同じ銘柄の系列に符号付きで足される。
+ */
+function groupMap(holdings: readonly Holding[], by: BreakdownKey): Map<string, string> {
+  if (by !== 'security') return new Map(holdings.map((h) => [h.id, h[by]]));
+  const names = new Map<string, string>();
+  const out = new Map<string, string>();
+  for (const h of holdings) {
+    if (h.broker === CASH_BROKER) {
+      out.set(h.id, CASH_SERIES_LABEL);
+      continue;
+    }
+    const key = securityKeyOf(h);
+    if (!names.has(key)) names.set(key, h.securityName ?? h.name);
+    out.set(h.id, names.get(key)!);
+  }
+  return out;
+}
+
 export function breakdownSeries(data: Src, by: BreakdownKey): BreakdownSeries {
-  const groupOf = new Map<string, string>(data.holdings.map((h: Holding) => [h.id, h[by]]));
+  const groupOf = groupMap(data.holdings, by);
   const keySet = new Set(groupOf.values());
   const rowMap = new Map<string, BreakdownRow>(
     [...data.dates].sort().map((date) => [date, { date, values: Object.fromEntries([...keySet].map((k) => [k, 0])), total: 0 }]),

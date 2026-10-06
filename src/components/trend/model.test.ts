@@ -9,7 +9,9 @@ import {
   periodChange,
   tickInterval,
   trendColor,
+  MAX_SERIES,
   OTHER_LABEL,
+  seriesLabel,
   TOTAL_LABEL,
 } from './model.ts';
 
@@ -119,5 +121,58 @@ describe('表示用', () => {
   it('間引き', () => {
     expect(tickInterval(5, 6)).toBe(0);
     expect(tickInterval(30, 6)).toBe(4);
+  });
+});
+
+describe('銘柄の内訳', () => {
+  const sec = (n: number) => {
+    const holdings = Array.from({ length: n }, (_, i) => ({
+      id: `h${i}`, name: `架空銘柄${i}`, assetClass: '投資信託', broker: '社A', account: '特定',
+    }));
+    const dates = ['2024-01-01', '2026-01-01'];
+    const snapshots = dates.flatMap((date, d) => holdings.map((h, i) => ({ date, holdingId: h.id, value: 1000 + i * 10 + d })));
+    return { holdings, snapshots, dates } as never;
+  };
+  it('9銘柄以上は その他 にまとめ、件数を持つ。合計は変わらない', () => {
+    const m = buildTrendModel(sec(12), 'security', 'all');
+    expect(m.keys).toHaveLength(MAX_SERIES);
+    expect(m.keys.at(-1)).toBe(OTHER_LABEL);
+    expect(m.otherCount).toBe(5);
+    expect(seriesLabel(m, OTHER_LABEL)).toBe('その他（5銘柄）');
+    expect(seriesLabel(m, '架空銘柄1')).toBe('架空銘柄1');
+    for (const r of m.rows) expect(Object.values(r.values).reduce((a, b) => a + b, 0)).toBe(r.total);
+  });
+  it('まとめなければ otherCount はない。他の内訳にも付かない', () => {
+    expect(buildTrendModel(sec(3), 'security', 'all').otherCount).toBeUndefined();
+    expect(buildTrendModel(mk(10), 'assetClass', 'all').otherCount).toBeUndefined();
+  });
+  it('基準日が終点で、並びは基準日の値の大きい順', () => {
+    const m = buildTrendModel(sec(3), 'security', 'all', '2024-01-01');
+    expect(m.rows.map((r) => r.date)).toEqual(['2024-01-01']);
+    expect(m.keys[0]).toBe('架空銘柄2');
+  });
+  it('色は出現順の系列色、その他は --series-other', () => {
+    expect(trendColor('security', '架空銘柄0', 2)).toBe('var(--series-3)');
+    expect(trendColor('security', OTHER_LABEL, 7)).toBe('var(--series-other)');
+    const m = buildTrendModel(sec(12), 'security', 'all');
+    const l = buildLegend(m, 'security');
+    expect(l.at(-1)).toMatchObject({ label: 'その他（5銘柄）', color: 'var(--series-other)' });
+  });
+});
+
+describe('期間中ずっと 0 の系列', () => {
+  it('どの日も 0 の系列は除き、一度でも値のある系列は残す', () => {
+    const hs = [
+      { id: 'a', broker: '架空証券A', account: '特定口座', name: '架空株A', assetClass: '国内株', region: '日本' },
+      { id: 'b', broker: '架空証券A', account: '特定口座', name: '架空株B', assetClass: '国内株', region: '日本' },
+      { id: 'c', broker: '架空証券A', account: '特定口座', name: '架空株C', assetClass: '国内株', region: '日本' },
+    ];
+    const vals: Record<string, number[]> = { '2026-08-31': [100, 50, 0], '2026-09-30': [110, 0, 0] };
+    const d = {
+      holdings: hs,
+      dates: Object.keys(vals),
+      snapshots: Object.keys(vals).flatMap((date) => hs.map((h, i) => ({ date, holdingId: h.id, value: vals[date]![i]! }))),
+    };
+    expect(buildTrendModel(d, 'security', 'all').keys).toEqual(['架空株A', '架空株B']);
   });
 });

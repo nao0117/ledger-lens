@@ -31,6 +31,16 @@ describe('parseMasterSheet', () => {
     expect(warnings.map((w) => w.code)).toEqual(['incomplete-master-row']);
   });
 
+  it('D 列の名寄せ名を読む（空なら持たない）', () => {
+    const { entries } = parseMasterSheet([
+      ['銘柄名', '資産クラス', '地域', '名寄せ名'],
+      ['サンプル全世界株式(愛称)', '投資信託', '全世界', ' サンプル全世界株式 '],
+      ['サンプル全世界株式', '投資信託', '全世界'],
+    ]);
+    expect(entries.get('サンプル全世界株式(愛称)')?.securityName).toBe('サンプル全世界株式');
+    expect(entries.get('サンプル全世界株式')).not.toHaveProperty('securityName');
+  });
+
   it('想定外の資産クラスと地域は警告する', () => {
     const { warnings } = parseMasterSheet([['サンプル投信A', '債券', '月']]);
     expect(warnings.map((w) => w.code)).toEqual(['unknown-asset-class', 'unknown-region']);
@@ -52,6 +62,12 @@ describe('applyMaster', () => {
 
   it('マスタにない銘柄は「未分類」にする', () => {
     expect(applied.find((h) => h.name === 'サンプル信用D')).toMatchObject({ assetClass: '未分類', region: '未分類' });
+  });
+
+  it('名寄せ名を銘柄に反映する', () => {
+    const master = parseMasterSheet([['サンプル投信A', '投資信託', '全世界', 'サンプル投信まとめ']]);
+    const out = applyMaster(holdings, master).filter((h) => h.name === 'サンプル投信A');
+    expect(out.map((h) => h.securityName)).toEqual(['サンプル投信まとめ', 'サンプル投信まとめ']);
   });
 
   it('現金はマスタの対象外', () => {

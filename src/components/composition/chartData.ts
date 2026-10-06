@@ -1,4 +1,5 @@
 import type { Change, TreeNode } from '../../domain/index.ts';
+import type { SecurityGroup } from '../../domain/tree.ts';
 import { CASH_BROKER, UNCLASSIFIED } from '../../parser/index.ts';
 
 /** ツリーマップ 1 セル分のデータ。表示用の付加情報を持つ。 */
@@ -33,6 +34,25 @@ export function toCellNodes(nodes: TreeNode[], total: number, parent: string[] =
     if (n.children) cell.children = toCellNodes(n.children, total, path);
     return cell;
   });
+}
+
+/** 銘柄別ツリー（資産クラス → 銘柄）を CellNode にする。割合は総資産比（SecurityRow.ratio）。 */
+export function toSecurityCellNodes(groups: SecurityGroup[]): CellNode[] {
+  return groups.map((g) => ({
+    name: g.name,
+    value: g.value,
+    path: [g.name],
+    ratio: g.ratio,
+    assetClass: g.name,
+    children: g.children.map((l): CellNode => ({
+      name: l.name,
+      value: l.value,
+      path: [g.name, l.name],
+      ratio: l.ratio,
+      id: l.id,
+      assetClass: l.assetClass,
+    })),
+  }));
 }
 
 /** セルを一意に表すキー。銘柄は銘柄ID、それ以外はパス。 */

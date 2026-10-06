@@ -22,4 +22,14 @@ describe('buildParsedData', () => {
     expect(data.warnings.some((w) => w.code === 'missing-master')).toBe(true);
     expect(data.holdings.filter((h) => h.broker !== '現金').every((h) => h.assetClass === UNCLASSIFIED)).toBe(true);
   });
+
+  it('名寄せ名でまとめた銘柄の分類が食い違えば警告する（表記違いの候補がなければ候補の警告は出さない）', () => {
+    const plain = buildParsedData(buildAnnualGrid(), MASTER_GRID);
+    expect(plain.warnings.filter((w) => w.code.startsWith('security-'))).toEqual([]);
+
+    const master = MASTER_GRID.map((row) => (row[0] === 'サンプル投信B' ? [...row, 'サンプル投信A'] : row));
+    const data = buildParsedData(buildAnnualGrid(), master);
+    expect(data.holdings.find((h) => h.name === 'サンプル投信B')?.securityName).toBe('サンプル投信A');
+    expect(data.warnings.filter((w) => w.code === 'security-class-conflict')).toHaveLength(1);
+  });
 });

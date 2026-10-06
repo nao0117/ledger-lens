@@ -1,5 +1,5 @@
 import { useMoney } from '../Money.tsx';
-import { TOTAL_LABEL, formatDateJa, type TrendModel } from './model.ts';
+import { TOTAL_LABEL, formatDateJa, seriesLabel, type TrendModel } from './model.ts';
 
 /** グラフと同じ値の表（折りたたみ）。新しい日付が上。 */
 export default function TrendTable({ model }: { model: TrendModel }) {
@@ -18,7 +18,7 @@ export default function TrendTable({ model }: { model: TrendModel }) {
             <thead>
               <tr>
                 <th scope="col">日付</th>
-                {!single && model.keys.map((k) => <th key={k} scope="col">{k}</th>)}
+                {!single && model.keys.map((k) => <th key={k} scope="col">{seriesLabel(model, k)}</th>)}
                 <th scope="col">{TOTAL_LABEL}</th>
               </tr>
             </thead>

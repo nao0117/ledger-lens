@@ -165,6 +165,24 @@
 }
 
 /* 2. 推移 */
+.trend-controls .seg {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.trend-controls .seg button {
+  flex: 1 0 auto;
+  padding: 0 0.75rem;
+}
+
+.trend-legend-name {
+  min-width: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .trend-controls {
   display: flex;
   flex-direction: column;
@@ -274,6 +292,18 @@
   text-align: left;
 }
 
+/* 列が多いとき、日付の列を左に固定する */
+.trend-table th[scope='row'],
+.trend-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+}
+
+.trend-table thead th:first-child {
+  z-index: 1;
+}
+
 .trend-table thead th {
   position: sticky;
   top: 0;
@@ -330,6 +360,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mv-accounts {
+  flex: none;
+  padding: 0 0.375rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: 999px;
 }
 
 .mv-dot {

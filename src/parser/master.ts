@@ -7,7 +7,7 @@ export const REGIONS = ['全世界', '米国', '先進国', '日本', 'インド
 
 const HEADER_LABEL = '銘柄名';
 
-export type MasterEntry = { assetClass: string; region: string };
+export type MasterEntry = { assetClass: string; region: string; securityName?: string };
 
 export type ParsedMaster = {
   /** キーは正規化した銘柄名 */
@@ -15,7 +15,7 @@ export type ParsedMaster = {
   warnings: ParseWarning[];
 };
 
-/** 「銘柄マスタ」シート（A: 銘柄名 / B: 資産クラス / C: 地域）を読む。 */
+/** 「銘柄マスタ」シート（A: 銘柄名 / B: 資産クラス / C: 地域 / D: 名寄せ名（任意））を読む。 */
 export function parseMasterSheet(grid: Grid): ParsedMaster {
   const entries = new Map<string, MasterEntry>();
   const warnings: ParseWarning[] = [];
@@ -38,7 +38,10 @@ export function parseMasterSheet(grid: Grid): ParsedMaster {
     if (entries.has(name)) {
       warnings.push({ code: 'duplicate-master-row', message: '銘柄マスタに、同じ銘柄名の行が複数あります。下の行を使います' });
     }
-    entries.set(name, { assetClass: assetClass || UNCLASSIFIED, region: region || UNCLASSIFIED });
+    const entry: MasterEntry = { assetClass: assetClass || UNCLASSIFIED, region: region || UNCLASSIFIED };
+    const securityName = normalizeLabel(row[3]);
+    if (securityName) entry.securityName = securityName;
+    entries.set(name, entry);
   }
 
   return { entries, warnings };

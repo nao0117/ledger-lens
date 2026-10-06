@@ -1,5 +1,5 @@
 import { Money } from '../Money.tsx';
-import { ratioText, type CellNode } from './chartData.ts';
+import { cellKey, ratioText, type CellNode } from './chartData.ts';
 
 function Row({ cell, strong }: { cell: CellNode; strong?: boolean }) {
   return (
@@ -21,7 +21,7 @@ function Branch({ cell }: { cell: CellNode }) {
       <details open={cell.path.length > 1}>
         <summary className="cmp-row"><Row cell={cell} strong /></summary>
         <ul className="cmp-list">
-          {children.map((c) => <Branch key={c.name} cell={c} />)}
+          {children.map((c) => <Branch key={cellKey(c)} cell={c} />)}
         </ul>
       </details>
     </li>
@@ -39,7 +39,7 @@ export default function CompositionList({ nodes }: { nodes: CellNode[] }) {
         <span className="cmp-row-money">評価額</span>
       </div>
       <ul className="cmp-list cmp-root">
-        {nodes.map((n) => <Branch key={n.name} cell={n} />)}
+        {nodes.map((n) => <Branch key={cellKey(n)} cell={n} />)}
       </ul>
     </details>
   );

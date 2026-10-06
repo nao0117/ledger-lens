@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { UNCLASSIFIED } from '../../parser/index.ts';
 import { assetClassColor } from '../colors.ts';
 import { cellKey, fitLabel, isUnclassified, legendClasses, ratioText, truncateToWidth, type CellNode } from './chartData.ts';
-import { ACCOUNT_LABEL_H, HEADER_H, layoutTreemap } from './layout.ts';
+import { ACCOUNT_LABEL_H, HEADER_H, layoutGrouped, layoutTreemap } from './layout.ts';
 
 type Size = { width: number; height: number };
 
@@ -31,16 +31,23 @@ type Props = {
   /** 選択中のセルのキー（cellKey） */
   selectedKey: string | null;
   onSelect: (cell: CellNode) => void;
+  /** account: 証券会社 → 口座区分 → 銘柄 / security: 資産クラス → 銘柄 */
+  variant?: 'account' | 'security';
 };
 
-/** 証券会社 → 口座区分 → 銘柄 のツリーマップ。銘柄セルは資産クラス色。 */
-export default function CompositionTree({ nodes, selectedKey, onSelect }: Props) {
+/** 証券会社 → 口座区分 → 銘柄（または 資産クラス → 銘柄）のツリーマップ。銘柄セルは資産クラス色。 */
+export default function CompositionTree({ nodes, selectedKey, onSelect, variant = 'account' }: Props) {
   const [ref, size] = useSize<HTMLDivElement>();
   const patternId = `cmp-unc-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
-  const layout = useMemo(
-    () => layoutTreemap(nodes, { x: 0, y: 0, width: size.width, height: size.height }),
-    [nodes, size.width, size.height],
-  );
+  const security = variant === 'security';
+  const layout = useMemo(() => {
+    const box = { x: 0, y: 0, width: size.width, height: size.height };
+    if (security) {
+      const g = layoutGrouped(nodes, box);
+      return { brokers: g.groups, accounts: [], leaves: g.leaves };
+    }
+    return layoutTreemap(nodes, box);
+  }, [nodes, security, size.width, size.height]);
   const classes = useMemo(() => legendClasses(nodes), [nodes]);
   const fillOf = (cell: CellNode) =>
     isUnclassified(cell) ? `url(#${patternId})` : assetClassColor(cell.assetClass ?? '', classes.indexOf(cell.assetClass ?? ''));
@@ -62,7 +69,7 @@ export default function CompositionTree({ nodes, selectedKey, onSelect }: Props)
             height={size.height}
             className={selected ? 'cmp-svg cmp-has-sel' : 'cmp-svg'}
             role="group"
-            aria-label="構成のツリーマップ（面積は評価額）"
+            aria-label={security ? '銘柄別の構成のツリーマップ（面積は評価額）' : '構成のツリーマップ（面積は評価額）'}
           >
             <defs>
               <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -74,14 +81,18 @@ export default function CompositionTree({ nodes, selectedKey, onSelect }: Props)
             {layout.brokers.map(({ node, rect, header }) => {
               const ratio = ratioText(node.ratio, 1);
               const ratioW = ratio.length * 7 + 6;
-              const name = header ? truncateToWidth(node.name, rect.width - 12 - ratioW) : null;
+              const swatch = security ? 12 : 0;
+              const name = header ? truncateToWidth(node.name, rect.width - 12 - ratioW - swatch) : null;
               return (
                 <g key={cellKey(node)} aria-hidden="true">
                   <rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={6} className="cmp-broker" />
+                  {header && security && (
+                    <rect x={rect.x + 6} y={rect.y + 5} width={9} height={9} rx={2} className="cmp-group-swatch" style={{ fill: fillOf(node) }} />
+                  )}
                   {header && (
                     <>
                       {name !== null && (
-                        <text x={rect.x + 6} y={rect.y + HEADER_H - 6} className="cmp-broker-name">{name}</text>
+                        <text x={rect.x + 6 + swatch} y={rect.y + HEADER_H - 6} className="cmp-broker-name">{name}</text>
                       )}
                       <text x={rect.x + rect.width - 6} y={rect.y + HEADER_H - 6} textAnchor="end" className="cmp-broker-ratio">
                         {ratio}

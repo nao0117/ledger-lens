@@ -50,7 +50,7 @@ export function parseAnnualSheet(grid: Grid): ParsedAnnual {
   const dates = [...dateColumns.keys()].sort();
 
   const sheetTotals: SheetTotals = {};
-  const holdings = new Map<string, { holding: Holding; values: Map<string, number> }>();
+  const holdings = new Map<string, { holding: Holding; values: Map<string, number>; blanks: Set<string> }>();
 
   let section: TotalKind | null = null;
   let broker = '';
@@ -95,8 +95,10 @@ export function parseAnnualSheet(grid: Grid): ParsedAnnual {
     }
 
     const values = new Map<string, number>();
+    const blanks = new Set<string>();
     for (const [date, col] of dateColumns) {
       values.set(date, readValue(row[col], date, warnings));
+      if (isBlank(row[col])) blanks.add(date);
     }
 
     const existing = holdings.get(holding.id);
@@ -105,15 +107,19 @@ export function parseAnnualSheet(grid: Grid): ParsedAnnual {
       for (const [date, value] of values) {
         existing.values.set(date, (existing.values.get(date) ?? 0) + value);
       }
+      // 合算した行のどちらかに値があれば、その日は保有している
+      for (const date of existing.blanks) if (!blanks.has(date)) existing.blanks.delete(date);
     } else {
-      holdings.set(holding.id, { holding, values });
+      holdings.set(holding.id, { holding, values, blanks });
     }
   }
 
   const snapshots: Snapshot[] = [];
-  for (const { holding, values } of holdings.values()) {
+  for (const { holding, values, blanks } of holdings.values()) {
     for (const date of dates) {
-      snapshots.push({ date, holdingId: holding.id, value: values.get(date) ?? 0 });
+      const snapshot: Snapshot = { date, holdingId: holding.id, value: values.get(date) ?? 0 };
+      if (blanks.has(date)) snapshot.blank = true;
+      snapshots.push(snapshot);
     }
   }
 

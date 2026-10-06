@@ -35,12 +35,14 @@ function SelectChip({
 }
 
 export function HoldingsFilters({
-  filters, options, onChange, onReset,
+  filters, options, onChange, onReset, notHeld,
 }: {
   filters: Filters;
   options: FilterOptions;
   onChange: (next: Filters) => void;
   onReset: () => void;
+  /** 基準日に保有していない銘柄（シートの空欄）の表示切り替え。count が 0 で非表示のときは出さない */
+  notHeld?: { count: number; shown: boolean; onToggle: () => void };
 }) {
   return (
     <form className="h-filters" role="search" aria-label="銘柄の絞り込み" onSubmit={(e) => e.preventDefault()}>
@@ -77,12 +79,25 @@ export function HoldingsFilters({
           </button>
         )}
       </div>
+      {notHeld && (notHeld.count > 0 || notHeld.shown) && (
+        <label className="h-notheld">
+          <input type="checkbox" checked={notHeld.shown} onChange={notHeld.onToggle} />
+          保有なしの銘柄も表示（{notHeld.count}）
+        </label>
+      )}
     </form>
   );
 }
 
 /** 並べ替え: キーを選ぶ select と、昇順・降順を切り替えるボタン。 */
-export function SortChip({ sort, onChange }: { sort: Sort; onChange: (next: Sort) => void }) {
+export function SortChip({
+  sort, onChange, keys = Object.keys(SORT_LABELS) as SortKey[],
+}: {
+  sort: Sort;
+  onChange: (next: Sort) => void;
+  /** 選べる並べ替えキー（省略時はすべて） */
+  keys?: readonly SortKey[];
+}) {
   const asc = sort.dir === 'asc';
   return (
     <span className="h-sortchip">
@@ -97,7 +112,7 @@ export function SortChip({ sort, onChange }: { sort: Sort; onChange: (next: Sort
             onChange({ key, dir: defaultDir(key) });
           }}
         >
-          {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+          {keys.map((k) => (
             <option key={k} value={k}>{SORT_LABELS[k]}</option>
           ))}
         </select>

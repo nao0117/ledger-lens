@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseAnnualSheet } from './annual.ts';
-import { buildAnnualGrid } from './fixtures/sampleSheets.ts';
+import { buildAnnualGrid, SERIAL_FEB, SERIAL_JAN } from './fixtures/sampleSheets.ts';
 import { ParseError, type Cell, type Holding } from './types.ts';
 
 const byName = (holdings: Holding[], name: string, broker?: string) =>
@@ -136,5 +136,31 @@ describe('parseAnnualSheet', () => {
 
   it('日付の行が見つからなければエラーにする', () => {
     expect(() => parseAnnualSheet([['', 'タイトルだけ']])).toThrow(ParseError);
+  });
+});
+
+describe('空欄と 0 の区別（保有していない / 評価額が 0）', () => {
+  // 列 F=1月末 / G=2月末。株式の行: 空欄・0・値あり
+  const grid = [
+    ['', 'サンプル資産推移'],
+    ['', '', '', '', '', SERIAL_JAN, SERIAL_FEB],
+    ['', '株式'],
+    ['', '', '証券会社A', '特定口座', 'サンプル株P', 100, null],
+    ['', '', '', '信用', 'サンプル株Q', 0, 0],
+    ['', '', '', 'NISA口座', 'サンプル株R', null, null],
+  ];
+  const parsed = parseAnnualSheet(grid);
+  const snap = (name: string, date: string) =>
+    parsed.snapshots.find((s) => s.holdingId.endsWith(`|${name}`) && s.date === date)!;
+
+  it('空欄のセルには blank を付け、値は 0 にする', () => {
+    expect(snap('サンプル株P', '2024-02-29')).toEqual({ date: '2024-02-29', holdingId: '証券会社A|特定口座|サンプル株P', value: 0, blank: true });
+    expect(snap('サンプル株R', '2024-01-31').blank).toBe(true);
+  });
+
+  it('0 と入力されたセル、値のあるセルには blank を付けない', () => {
+    expect(snap('サンプル株Q', '2024-01-31')).not.toHaveProperty('blank');
+    expect(snap('サンプル株Q', '2024-02-29').value).toBe(0);
+    expect(snap('サンプル株P', '2024-01-31')).not.toHaveProperty('blank');
   });
 });
