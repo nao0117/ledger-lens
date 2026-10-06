@@ -7,7 +7,6 @@ import { buildParsedData } from './loadData.ts';
 import Composition from './pages/Composition.tsx';
 import Dashboard from './pages/Dashboard.tsx';
 import Holdings from './pages/Holdings.tsx';
-import Trend from './pages/Trend.tsx';
 import type { ParsedAnnual } from './parser/index.ts';
 import { useRoute } from './router.ts';
 import { ANNUAL_SHEET_TITLE, MASTER_SHEET_TITLE, clearSpreadsheetId, fetchSheetGrids, loadSpreadsheetId, pickSpreadsheet, SheetsApiError } from './sheets/index.ts';
@@ -16,8 +15,6 @@ import { PrefsProvider } from './state/prefs.tsx';
 
 function Page() {
   switch (useRoute()) {
-    case '/trend':
-      return <Trend />;
     case '/composition':
       return <Composition />;
     case '/holdings':

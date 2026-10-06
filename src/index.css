@@ -1,38 +1,6 @@
 :root {
-  --bg: #f7f7f8;
-  --surface: #ffffff;
-  --text: #1c1c1e;
-  --text-muted: #5f6368;
-  --border: #e0e0e3;
-  --accent: #2f6fde;
-
-  color-scheme: light;
-  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  font-family: var(--font);
   line-height: 1.6;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #121214;
-    --surface: #1c1c1f;
-    --text: #ececef;
-    --text-muted: #a0a0a8;
-    --border: #2e2e33;
-    --accent: #7aa7ff;
-
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: #121214;
-  --surface: #1c1c1f;
-  --text: #ececef;
-  --text-muted: #a0a0a8;
-  --border: #2e2e33;
-  --accent: #7aa7ff;
-
-  color-scheme: dark;
 }
 
 *,
